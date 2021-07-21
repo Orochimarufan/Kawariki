@@ -38,7 +38,7 @@ import sys
 import tarfile
 import tempfile
 import textwrap
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Sequence
 import urllib.request
 
 
@@ -531,7 +531,7 @@ def select_and_download_nwjs(r: Runtime, game: Game, nwjs_name: str=None, sdk=Fa
     return nwjs
 
 
-def try_run_nwjs(game_path: str, arguments: list[str], nwjs_name=None, dry=False, sdk=None):
+def try_run_nwjs(game_path: str, arguments: Sequence[str], nwjs_name=None, dry=False, sdk=None):
     # Make sure to convert backslashes
     if '\\' in str(game_path):
         game_path = pathlib.PureWindowsPath(game_path).as_posix()
@@ -784,7 +784,7 @@ class Patcher:
     
     def add_launcher(self, dst: PatcherOut, game: Game):
         print("Adding launcher script 'Game.sh'")
-        dst.write_file("Game.sh", self.format_launcher(self.nwjs.dist / "nw", game.package_dir).encode("utf-8"), mode=0o755)
+        dst.write_file("Game.sh", self.format_launcher(f"{self.nwjs.dist}/nw", game.package_dir).encode("utf-8"), mode=0o755)
     
     def run(self, dst: PatcherOut, game: Game):
         with dst:
