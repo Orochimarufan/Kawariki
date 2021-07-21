@@ -14,6 +14,12 @@ Usage
 ### Steam Play
 Just install it into compatibilitytools.d like a custom Proton release.
 
+Some environment variables are available to influence Kawariki:
+- `KAWARIKI_SDK=1` Use NW.js with DevTools support (like `--sdk`)
+- `KAWARIKI_NWJS=<name>` Use a specific NW.js version (like `--nwjs <name>`)
+
+These can be used in the Steam launch options like with Proton. E.g. `KAWARIKI_SDK=1 %command%`
+
 ### CLI
 The CLI brings some options for non-Steam games and developers:
 

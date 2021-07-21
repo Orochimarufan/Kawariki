@@ -844,15 +844,32 @@ def try_patch_game(args):
 # :---------------------------------------------------------------------------:
 #   Main
 # :---------------------------------------------------------------------------:
-def add_common_args(parser: argparse.ArgumentParser, *, gamepath=True, nwjs=True, sdk=True):
+def env_bool(str) -> bool:
+    return str not in ("", "0", "false", "no")
+
+def check_environ(envname, type):
+    if (arg := os.environ.get(envname)) is not None:
+        print(f"Read argument from environment: {envname}={shlex.quote(arg)}", file=sys.stderr)
+        return type(arg)
+
+def add_common_args(parser: argparse.ArgumentParser, env, *, gamepath=True, nwjs=True, sdk=True):
     if gamepath:
         parser.add_argument("game", help="Path of the game directory or executable", type=pathlib.Path)
     if sdk:
-        parser.add_argument("-d", "--sdk", action="store_true", help="Select a NW.js version with DevTools support")
+        parser.add_argument("-d", "--sdk", action="store_true", help="Select a NW.js version with DevTools support", default=env.get("sdk"))
     if nwjs:
-        parser.add_argument("--nwjs", help="Use specified NW.js version from 'nwjs-versions.json'")
+        parser.add_argument("--nwjs", help="Use specified NW.js version from 'nwjs-versions.json'", default=env.get("nwjs"))
+
 
 def main(argv):
+    # Get defaults from environment variables
+    env = {
+        "sdk": check_environ("KAWARIKI_SDK", env_bool),
+        "nwjs": check_environ("KAWARIKI_NWJS", str),
+    }
+
+    # -------------------------------------------
+    # Parse commandline
     parser = argparse.ArgumentParser(prog=argv[0], description="""\
     Kawariki is a Steam Play compatible tool for running NW.js-based games using
     different (usually newer) versions of NW.js than they shipped with.
@@ -863,26 +880,36 @@ def main(argv):
             version=f"Kawariki {__version__}, running on Python {version_str(sys.version_info)}")
     sub = parser.add_subparsers(dest="action")
     add_sub_parser = lambda name, help=None: sub.add_parser(name, help=help, description=help)
+
+    # Arguments for run mode
     run = add_sub_parser("run", help="Run a NW.js based game on a different NW.js version")
-    add_common_args(run)
+    add_common_args(run, env)
     run.add_argument("--wait", action="store_true")
     run.add_argument("--dry", action="store_true", help="Only print the resulting command, don't run the game")
     run.add_argument("game_args", metavar="game args", nargs="*", help="Pass additional arguments to the game")
+
+    # Fixpath
     fixpath = add_sub_parser("fixpath")
     fixpath.add_argument("path")
+
+    # Arguments for patch mode
     patchgame = add_sub_parser("patch", help="Create a patched version of a NW.js game with a different version baked in")
-    add_common_args(patchgame)
+    add_common_args(patchgame, env)
     patchgame_out = patchgame.add_argument_group("destination options").add_mutually_exclusive_group(required=True)
     patchgame_out.add_argument("-a", "--archive", help="Create an archive file", type=pathlib.Path)
     patchgame_out.add_argument("-o", "--dest", help="Store patched game in this directory", type=pathlib.Path)
     patchgame_out.add_argument("--link-dest", help="Store patched game in this directory, use hard links to save space",
             type=pathlib.Path)
     patchgame_out.add_argument("--inplace", action="store_true", help="Modify the game in place")
+
+    # Arguments for launcher mode
     create_launcher = add_sub_parser("launcher", help="Add a launcher script to the game directory")
-    add_common_args(create_launcher)
+    add_common_args(create_launcher, env)
     create_launcher.add_argument("launcher", help="Filename of the launcher to create [%(default)s]", default="Game.sh", nargs="?")
     args = parser.parse_args(argv[1:])
 
+    # -------------------------------------------
+    # Call the right function above
     print(f"v{__version__}, python {version_str(sys.version_info)}; {shlex.join(argv[1:])}", file=sys.stderr)
 
     if args.action == "run":
