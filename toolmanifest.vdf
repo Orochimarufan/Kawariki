@@ -1,0 +1,7 @@
+"manifest"
+{
+  "commandline" "/kawariki run --"
+  "commandline_getnativepath" "/kawariki fixpath"
+  "commandline_getcompatpath" "/kawariki fixpath"
+  "commandline_waitforexitandrun" "/kawariki run --wait --"
+}
