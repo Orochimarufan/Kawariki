@@ -162,6 +162,7 @@ class ZenityGui:
         subprocess.check_call([self.prog, types[type], "--title", title, "--text", message])
 
     class ProgressDialog:
+        # TODO: Fix newline in text
         def __init__(self, prog, /, title, text, progress=0, maximum=100):
             self.prog = prog
             self.title = title
@@ -172,10 +173,12 @@ class ZenityGui:
 
         @property
         def percentage(self):
-            return self._progress / self.maximum * 100
+            return self._progress * 100 // self.maximum
 
         def __enter__(self):
-            self.proc = subprocess.Popen([self.prog, "--progress", "--title", self.title, "--text", self._text, "--percentage", f"{self.percentage:.0f}"], stdin=subprocess.PIPE)
+            self.proc = subprocess.Popen([self.prog, "--progress", "--no-cancel", "--auto-close",
+                "--title", self.title, "--text", self._text, "--percentage", f"{self.percentage}"],
+                stdin=subprocess.PIPE)
             return self
 
         def __exit__(self, t, e, tb):
@@ -239,7 +242,7 @@ class DummyProgress:
 #   Support
 # :---------------------------------------------------------------------------:
 def create_gui():
-    specified = os.environ.get("MVWRAPPER_GUI", "").lower()
+    specified = os.environ.get("KAWARIKI_GUI", "").lower()
     if HAVE_TK and specified in ("", "tk", "tkinter"):
         return TkGui()
     elif (prog := shutil.which("zenity")) and specified in ("", "zenity"):
@@ -445,7 +448,7 @@ def try_download_nwjs(r: Runtime, nwjs: Runtime.NWjs):
         try:
             with urllib.request.urlopen(nwjs.info["dist_url"]) as f:
                 f: urllib.response.addinfourl
-                p.maximum = int(f.info().get("content-length", 0))
+                maxi = p.maximum = int(f.info().get("content-length", 0))
                 with tarfile.open(mode="r|*", fileobj=f, encoding="utf-8") as tar:
                     tar: tarfile.TarFile
                     dest = nwjs.get_path("dist")
@@ -460,7 +463,11 @@ def try_download_nwjs(r: Runtime, nwjs: Runtime.NWjs):
                             if dir.startswith("nwjs-"):
                                 info.name = name
                         p.text = f"{progress_header}\n\nExtracting '{info.name}'"
+                        # Make sure we never go over 100%
+                        if info.offset >= maxi:
+                            p.maximum = info.offset + 1
                         p.progress = info.offset
+                        # Actually do the work
                         tar.extract(info, dest)
         except urllib.request.URLError as e:
             r.show_error(f"Could not connect to '{nwjs.info['dist_url']}':\n{e.reason}")
