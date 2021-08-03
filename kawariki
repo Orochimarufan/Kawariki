@@ -786,7 +786,7 @@ class Patcher:
         return textwrap.dedent(f'''\
             #!/bin/sh
             cd "`dirname "$0"`"
-            exec {shlex.join(map(str, args))}{' "$0"' if append_args else ""}
+            exec {shlex.join(map(str, args))}{' "$@"' if append_args else ""}
             ''')
     
     def add_launcher(self, dst: PatcherOut, game: Game):
