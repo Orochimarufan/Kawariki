@@ -83,6 +83,15 @@ Available keys are:
 
 By default, the most recent NW.js distribution listed is chosen.
 
+Filesystem case-sensitivity
+---------------------------
+
+For dealing with case-sensitivity issues there are currently 2 options:
+- Use a case casefolding filesystem (e.g. ext4)
+- Make the app deal with case mismatches (see `case-insensitive-nw` directory)
+
+An option to automatically inject the script from `case-insensitive-nw` may be added in the future, but for now it needs to be added to the app manually.
+
 License
 -------
 
