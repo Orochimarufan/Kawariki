@@ -12,7 +12,9 @@ Usage
 -----
 
 ### Steam Play
-Just install it into compatibilitytools.d like a custom Proton release.
+Just install it into compatibilitytools.d like a custom Proton release. You can then
+select it in the game properties dialog. You shouldn't set it globally in the settings
+dialog as it only works with NW.js-based games, not general Windows titles.
 
 Some environment variables are available to influence Kawariki:
 - `KAWARIKI_SDK=1` Use NW.js with DevTools support (like `--sdk`)

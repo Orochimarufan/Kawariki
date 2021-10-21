@@ -845,7 +845,7 @@ def try_patch_game(args):
 #   Main
 # :---------------------------------------------------------------------------:
 def env_bool(str) -> bool:
-    return str not in ("", "0", "false", "no")
+    return str.lower() not in ("", "0", "false", "no", "n")
 
 def check_environ(envname, type):
     if (arg := os.environ.get(envname)) is not None:
