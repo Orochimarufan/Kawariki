@@ -1,5 +1,5 @@
 (()=>{
-    // Unfortunately, Chrome/NW.js WebRequest API is synchronous-only, unlike the Electron version
+    // Unfortunately, Chrome/NW.js WebRequest API is synchronous-only, unlike the Electron protocol API
     const fs = require('fs');
     const fsp = require('fs/promises');
     const path = require('path');
@@ -118,7 +118,7 @@
             }
             return {};
         },
-        {urls:[chrome.runtime.getURL("/www/*")]}, ["blocking"]);
+        {urls:[chrome.runtime.getURL("/*")]}, ["blocking"]);
     });
 
     window._casein = {loadCasemapFile, saveCasemapFile, findFilePathCISync, findFileNameCISync, get casemap() { return casemap; }};
