@@ -4,14 +4,14 @@
         "version":      [0, 54, 1],
         "dist":         "nwjs-v0.54.1-linux-x64",
         "dist_url":     "https://dl.nwjs.io/v0.54.1/nwjs-v0.54.1-linux-x64.tar.gz",
-        "greenworks":   "greenworks-nwjs-0.54.x-linux-x64"
+        "greenworks":   "nwjs-0.54.x-linux-x64"
     },
     {
         "name":         "54-sdk",
         "version":      [0, 54, 1],
         "dist":         "nwjs-sdk-v0.54.1-linux-x64",
         "dist_url":     "https://dl.nwjs.io/v0.54.1/nwjs-sdk-v0.54.1-linux-x64.tar.gz",
-        "greenworks":   "greenworks-nwjs-0.54.x-linux-x64",
+        "greenworks":   "nwjs-0.54.x-linux-x64",
         "sdk":          true
     },
     {

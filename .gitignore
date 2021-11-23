@@ -1,4 +1,4 @@
-nwjs-*/
+dist/*
 *.tar.xz
 _misc/
 __pycache__

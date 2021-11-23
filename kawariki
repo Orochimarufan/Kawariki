@@ -313,7 +313,7 @@ class Runtime:
             return self.info["dist"]
 
         def get_path(self, component) -> pathlib.Path:
-            return self._path / self.info[component]
+            return self._path / component / self.info[component]
 
         def has(self, component):
             return bool(self.info.get(component, None))
