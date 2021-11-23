@@ -627,10 +627,11 @@ def add_launcher(args):
         return nwjs
     
     selfpath = (r.base / pathlib.Path(sys.argv[0]).name).resolve()
+    prefix = shlex.split(args.prefix) if args.prefix else []
     
     path = game_root / args.launcher
     with open(path, "w") as f:
-        f.write(Patcher.format_launcher(selfpath, "run", "--", "."))
+        f.write(Patcher.format_launcher(*prefix, selfpath, "run", "--", "."))
     os.chmod(path, 0o755)
     
     print(f"Created launcher '{path}'")
@@ -905,6 +906,7 @@ def main(argv):
     # Arguments for launcher mode
     create_launcher = add_sub_parser("launcher", help="Add a launcher script to the game directory")
     add_common_args(create_launcher, env)
+    create_launcher.add_argument("-p", "--prefix", help="Prefix the command to run (e.g. primusrun/gamemode/gamescope)")
     create_launcher.add_argument("launcher", help="Filename of the launcher to create [%(default)s]", default="Game.sh", nargs="?")
     args = parser.parse_args(argv[1:])
 
