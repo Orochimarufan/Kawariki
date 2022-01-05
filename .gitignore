@@ -1,4 +1,6 @@
-dist/*
-*.tar.xz
-_misc/
+/dist/*
+/_misc/
+/lib/*
+!/lib/kawariki/
 __pycache__
+*.tar.xz
