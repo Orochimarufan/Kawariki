@@ -5,12 +5,13 @@ import subprocess
 import tempfile
 from functools import cached_property
 from pathlib import Path
-from shutil import copytree
+from shutil import copytree, copyfileobj
 from typing import Optional, Sequence, Union
 
-from ..app import App
+from ..app import App, IRuntime
 from ..game import Game
 from ..misc import ErrorCode, copy_unlink, version_str
+from ..process import ProcessLaunchInfo
 
 
 class NWjs:
@@ -48,22 +49,22 @@ class NWjs:
         return f"<Runtime.NWjs {version_str(self.version)} '{self.dist}' at 0x{id(self):x}>"
 
 
-class Runtime:
+class Runtime(IRuntime):
     app: App
     base: Path
     overlayns_bin: Path
 
     def __init__(self, app: App):
         self.app = app
-        self.base = app.app_root
-        self.overlayns_bin = self.base / "overlayns-static"
+        self.base = app.app_root / "nwjs"
+        self.overlayns_bin = app.app_root / "overlayns-static"
 
     # +-------------------------------------------------+
     # NW.js versions
     # +-------------------------------------------------+
     @cached_property
     def nwjs_versions(self):
-        with open(self.base / "nwjs-versions.json") as f:
+        with open(self.base / "versions.json") as f:
             return [NWjs(i, self.base) for i in json.load(f)]
 
     def get_nwjs(self, version_name: str) -> Optional[NWjs]:
@@ -106,7 +107,7 @@ class Runtime:
                 print(f"Using specified NW.js version '{nwjs_name}' ({nwjs.dist})")
 
         if game.is_rpgmaker:
-            print(f"Looks like RPGMaker {game.rpgmaker_release} {version_str(game.rpgmaker_version)}")
+            print(f"Looks like RPGMaker {game.rpgmaker_release} {version_str(game.rpgmaker_version or ())}")
 
             if game.is_rpgmaker_mv_legacy:
                 if nwjs is not None:
@@ -178,24 +179,39 @@ class Runtime:
     # +-------------------------------------------------+
     #   Run NW.js for Game
     # +-------------------------------------------------+
-    def run(self, game, arguments: Sequence[str], nwjs_name=None, dry=False, sdk=None) -> int:
-        if not game.is_nwjs_app:
-            raise RuntimeError("Called nwjs.Runtime.run with non-NW.js game")
+    def _inject_file(self, game, proc, mode, scripts):
+        with tempfile.NamedTemporaryFile("w", dir=game.package_dir, prefix=f"{mode}-", suffix=".js", delete=False) as f:
+            name = os.path.basename(f.name)
+            f.write(f"// Kawariki NW.js {mode} script\n")
+            f.write(f"console.log('[Kawariki] Injected {name}');\n")
+            if mode == "preload":
+                for script in scripts:
+                    f.write(f"require('{script}');\n")
+            elif mode == "inject":
+                f.write("""(function() {
+                    var head = document.head ? document.head : document.documentElement;
+                    function addScript(path) {
+                        var el = document.createElement("script");
+                        el.type = "text/javascript";
+                        el.src = path;
+                        head.appendChild(el);
+                    }
+                    """)
+                for script in scripts:
+                    f.write(f"addScript('file://{script}');\n")
+                f.write("})();")
+            else:
+                os.unlink(f.name)
+                raise ValueError("Unknown _inject_file mode")
+            proc.at_cleanup(lambda: os.unlink(f.name))
+            return name
 
-        # Get suitable NW.js distro
-        try:
-            nwjs = self.select_and_download_nwjs(game, nwjs_name, sdk)
-        except ErrorCode as e:
-            return e.code
-
-        # Patch some game files
-        tempdir = None
-        overlayns = []
-
-        # Patch native greenworks (Steamworks API)
+    def overlay_files(self, game, nwjs, proc):
         # Use some namespace magic to leave the game install clean
         # This requires unprivileged user namespaces to be enabled in the kernel
         # In some versions of Ubuntu/Debian it can be enabled with 'sysctl -w kernel.unprivileged_userns_clone=1'
+
+        # Patch native greenworks (Steamworks API)
         for path in game.root.rglob("greenworks.js"):
             if not nwjs.has("greenworks"):
                 self.app.show_warn(f"Greenworks not available on NW.js version '{nwjs.name}' ({nwjs.dist})")
@@ -207,40 +223,66 @@ class Runtime:
             #overlayns.append("-o")
             #overlayns.append("{},shadow,lowerdir={},nodev,nosuid".format(ppath,r.nwjs_greenworks_path))
             # Instead, fall back to copies and bind mounts
-            if tempdir is None:
-                tempdir = tempfile.TemporaryDirectory()
-            xpath = Path(tempdir.name) / str(ppath.relative_to(game.root)).replace("/", "_")
+            tempdir = proc.temp_dir(prefix=str(ppath.relative_to(game.root)).replace("/", "_"))
+            xpath = tempdir.name
             if ',' in str(ppath) or ',' in str(xpath):
                 self.app.show_error("Comma in paths is currently not supported by overlayns\nGreenworks support disabled")
                 continue
             copytree(ppath, xpath)
             copytree(nwjs.get_path("greenworks"), xpath, dirs_exist_ok=True, copy_function=copy_unlink)
-            overlayns.append("-m")
-            overlayns.append(f"bind,{xpath},{ppath}")
+            proc.overlayns_bind(xpath, ppath)
+        
+        # TODO: make configurable
+        bg_scripts = [self.base / 'injects/case-insensitive-nw.js']
+        inject_scripts = []
 
-        env = os.environ.copy()
+        if game.rpgmaker_release == "MV":
+            # Disable this if we can detect a rmmv  plugin that provides remapping?
+            inject_scripts.append(self.base / 'injects/remap-mv.js')
+
+        # Patch package json
+        with open(game.package_json) as f:
+            pkg = json.load(f)
+        if nwjs.version >= (0, 19):
+            if bg_scripts:
+                pkg['bg-script'] = self._inject_file(game, proc, "preload", bg_scripts)
+            if inject_scripts:
+                pkg['inject_js_start'] = self._inject_file(game, proc, "inject", inject_scripts)
+        else:
+            if bg_scripts or inject_scripts:
+                pkg['inject_js_start'] = self._inject_file(game, proc, "inject", bg_scripts + inject_scripts)
+        with proc.temp_file(prefix="package-", suffix=".json") as f:
+            json.dump(pkg, f)
+            proc.overlayns_bind(f.name, game.package_json)
+
+    def run(self, game, arguments: Sequence[str], nwjs_name=None, dry=False, sdk=None, no_overlayns=False) -> int:
+        if not game.is_nwjs_app:
+            raise RuntimeError("Called nwjs.Runtime.run with non-NW.js game")
 
         if not game.package_json:
             self.app.show_error(f"{game.root}\ndoesn't look like a RPGMaker MV/MZ (or other NW.js) game")
             return 3
 
-        argv = [nwjs.binary, game.package_dir, *arguments]
+        # Get suitable NW.js distro
+        try:
+            nwjs = self.select_and_download_nwjs(game, nwjs_name, sdk)
+        except ErrorCode as e:
+            return e.code
 
-        if overlayns:
-            argv = [self.overlayns_bin, *overlayns, *argv]
+        proc = ProcessLaunchInfo(self.app, [nwjs.binary, game.package_dir, *arguments])
 
-        print(f"Running {shlex.join(map(str, argv))} in {game.root}")
+        # === Patch some game files ===
+        if no_overlayns:
+            self.app.show_warn("Overlayns is disabled. Plugin and Greenworks support not available.")
+        else:
+            self.overlay_files(game, nwjs, proc)
 
-        # Try to clean up some resources
-        self.app.free_gui()
+        # === Execute ===
+        print(f"Running {proc.argv_join()} in {game.root}")
 
         # FIXME: differentiate between overlayns and game/nwjs failure
-        #        and offer to re-try without overlaynw/greenworks support
-        if not dry:
-            subprocess.check_call(argv, cwd=game.root, env=env)
-
-        if tempdir:
-            tempdir.cleanup()
+        #        and offer to re-try without overlayns/greenworks support
+        proc.exec()
 
         return 0
 

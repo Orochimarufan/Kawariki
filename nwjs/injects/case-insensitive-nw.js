@@ -121,5 +121,10 @@
         {urls:[chrome.runtime.getURL("/*")]}, ["blocking"]);
     });
 
-    window._casein = {loadCasemapFile, saveCasemapFile, findFilePathCISync, findFileNameCISync, get casemap() { return casemap; }};
+    const casein = {loadCasemapFile, saveCasemapFile, findFilePathCISync, findFileNameCISync, get casemap() { return casemap; }};
+    if (exports !== undefined) {
+        Object.assign(exports, casein);
+    } else {
+        window._casein = casein;
+    }
 })();

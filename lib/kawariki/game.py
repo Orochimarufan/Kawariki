@@ -11,8 +11,9 @@ import re
 
 class Game:
     root: pathlib.Path
+    binary_name_hint: Optional[str]
 
-    def __init__(self, game_root: pathlib.Path, binary_name_hint: str):
+    def __init__(self, game_root: pathlib.Path, binary_name_hint: Optional[str]):
         self.root = game_root
         self.binary_name_hint = binary_name_hint
     

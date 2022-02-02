@@ -13,6 +13,7 @@ from .ui.common import AKawarikiUi, DummyProgressUi, MsgType
 class App:
     def __init__(self, app_root):
         self.app_root = Path(app_root).resolve()
+        self.overlayns_binary = self.app_root / "overlayns-static"
 
     # +-------------------------------------------------+
     # Error reporting
@@ -42,16 +43,16 @@ class App:
         if self.gui:
             self.gui.show_msg(type, title, message)
 
-    def show_error(self, message, title="RMMV NW.js Runtime Error"):
+    def show_error(self, message, title="Kawariki Runtime Error"):
         self.show_msg(MsgType.Error, title, message)
 
-    def show_warn(self, message, title="RMMV NW.js Runtime Warning"):
+    def show_warn(self, message, title="Kawariki Runtime Warning"):
         self.show_msg(MsgType.Warn, title, message)
 
-    def show_info(self, message, title="RMMV NW.js Runtime"):
+    def show_info(self, message, title="Kawariki Runtime"):
         self.show_msg(MsgType.Info, title, message)
 
-    def show_progress(self, text, progress=0, maximum=100, title="RMMV NW.js Runtime"):
+    def show_progress(self, text, progress=0, maximum=100, title="Kawariki Runtime"):
         if self.gui and hasattr(self.gui, "show_progress"):
             return self.gui.show_progress(title, text, progress, maximum)
         else:
@@ -60,7 +61,7 @@ class App:
 
 class IRuntime:
     @abstractmethod
-    def run(self, game: Game, arguments: Sequence[str], nwjs_name=None, dry=False, sdk=None) -> int:
+    def run(self, game: Game, arguments: Sequence[str], *, nwjs_name=None, dry=False, sdk=None, no_overlayns=False) -> int:
         pass
     @abstractmethod
     def get_patcher(self, game: Game):

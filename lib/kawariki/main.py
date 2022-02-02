@@ -30,7 +30,7 @@ import shlex
 import sys
 
 from .misc import version_str, hardlink_or_copy
-from .app import App
+from .app import App, IRuntime
 from .game import Game
 
 
@@ -52,8 +52,10 @@ def add_launcher(app: App, game: Game, args) -> int:
 
 
 def run_patcher(runtime, game, args) -> int:
+    from .patcher.common import APatcherOut
     patcher = runtime.get_patcher(game)
 
+    out: APatcherOut
     if args.archive:
         from .patcher.output.tar import PatcherToTar
         out = PatcherToTar(args.archive)
@@ -92,6 +94,7 @@ def add_common_args(parser: argparse.ArgumentParser, env, *, gamepath=True, nwjs
         parser.add_argument("-d", "--sdk", action="store_true", help="Select a NW.js version with DevTools support", default=env.get("sdk"))
     if nwjs:
         parser.add_argument("--nwjs", help="Use specified NW.js version from 'nwjs-versions.json'", default=env.get("nwjs"))
+    parser.add_argument("--no-overlayns", help="Don't try to use linux user namespaces", action="store_true")
 
 def parse_args(argv, env):
     # Parse commandline
@@ -165,25 +168,26 @@ def main(app, argv) -> int:
 
     game_exe = None
     if not game_root.is_dir():
-        game_root = game_root.parent
         game_exe = game_root.name
-    
+        game_root = game_root.parent
+
     game = Game(game_root, game_exe)
 
     if args.action == "launcher":
         return add_launcher(app, game, args)
     
     # Check game type
+    runtime: IRuntime
     if game.is_nwjs_app:
-        from .nwjs.runtime import Runtime
-        runtime = Runtime(app)
+        from .nwjs.runtime import Runtime as NwjsRuntime
+        runtime = NwjsRuntime(app)
     else:
         app.show_error(f"Game is not handled by Kawariki: {game_root}")
         return 22
 
     if args.action == "run":
         # Ignore --wait for now
-        return runtime.run(game, args.game_args, nwjs_name=args.nwjs, dry=args.dry, sdk=args.sdk)
+        return runtime.run(game, args.game_args, nwjs_name=args.nwjs, dry=args.dry, sdk=args.sdk, no_overlayns=args.no_overlayns)
     elif args.action == "patch":
         return run_patcher(runtime, game, args)
     else:
