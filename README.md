@@ -85,6 +85,12 @@ Custom code can be injected into the game. This (currently) requires `overlayns-
 
 A plugin to handle case-insensitive file lookups is automatically injected into NW.js games launched through Kawariki.
 
+RPGMaker RGSS
+-------------
+
+There is experimental support for RGSS based games using mkxp-z.
+
+
 overlayns-static
 ----------------
 

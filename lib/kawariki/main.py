@@ -181,6 +181,9 @@ def main(app, argv) -> int:
     if game.is_nwjs_app:
         from .nwjs.runtime import Runtime as NwjsRuntime
         runtime = NwjsRuntime(app)
+    elif game.is_rpgmaker_rgss:
+        from .mkxp.runtime import Runtime as MkxpRuntime
+        runtime = MkxpRuntime(app)
     else:
         app.show_error(f"Game is not handled by Kawariki: {game_root}")
         return 22

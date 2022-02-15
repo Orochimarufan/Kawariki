@@ -2,26 +2,27 @@
 #   Information about an installed game
 # :---------------------------------------------------------------------------:
 
-from typing import Optional, Tuple
 from functools import cached_property
+from pathlib import Path
+from re import compile as re_compile
+from typing import Optional, Tuple
 
-import pathlib
-import re
+__all__ = ["Game"]
 
 
 class Game:
-    root: pathlib.Path
+    root: Path
     binary_name_hint: Optional[str]
 
-    def __init__(self, game_root: pathlib.Path, binary_name_hint: Optional[str]):
+    def __init__(self, game_root: Path, binary_name_hint: Optional[str]):
         self.root = game_root
         self.binary_name_hint = binary_name_hint
-    
+
     # +-------------------------------------------------+
     # NW.js detection
     # +-------------------------------------------------+
     @cached_property
-    def package_json(self) -> "Optional[pathlib.Path]":
+    def package_json(self) -> "Optional[Path]":
         if (p := self.root / "package.json").exists():
             return p
         elif (p := self.root / "www" / "package.json").exists():
@@ -34,12 +35,12 @@ class Game:
         return None
 
     @property
-    def package_dir(self) -> "Optional[pathlib.Path]":
+    def package_dir(self) -> "Optional[Path]":
         """ Directory containing package.json, relative to game root """
         if pkg := self.package_json:
             return pkg.parent.relative_to(self.root)
         return None
-    
+
     @property
     def is_nwjs_app(self) -> bool:
         # TODO: this is very broad
@@ -48,7 +49,7 @@ class Game:
     # +-------------------------------------------------+
     # RPGMaker detection
     # +-------------------------------------------------+
-    RPGMAKER_INFO_RE = re.compile(r'''Utils.RPGMAKER_(VERSION|NAME)\s*\=\s*["']([^"']+)["']''')
+    RPGMAKER_INFO_RE = re_compile(r'''Utils.RPGMAKER_(VERSION|NAME)\s*\=\s*["']([^"']+)["']''')
 
     @cached_property
     def rpgmaker_info(self) -> "Optional[Tuple[str, Tuple]]":
@@ -65,6 +66,16 @@ class Game:
                             kind = m.group(2)
                         if version is not None and kind is not None:
                             return kind, version
+        # Detect legacy RPGMaker (RGSS)
+        for dllname in self.root.rglob("RGSS*.dll"):
+            ver = dllname.name[4:].rsplit(".", 1)[0]
+            if ver == "301":
+                return "VXAce", (3,0,1)
+            if ver == "300":
+                return "VXAce", (3,0,0)
+            if ver == "104E":
+                return "XP", (1,0,4,'e')
+            print(f"Looks like old RPGMaker, but not implemented: {dllname}")
         return None
 
     @property
@@ -81,7 +92,15 @@ class Game:
 
     @property
     def is_rpgmaker(self) -> bool:
-        return self.is_nwjs_app and self.rpgmaker_info is not None
+        return self.rpgmaker_info is not None
+
+    @property
+    def is_rpgmaker_rgss(self) -> bool:
+        return self.rpgmaker_release in ("VXAce", "VX", "XP")
+
+    @property
+    def is_rpgmaker_nwjs(self) -> bool:
+        return self.rpgmaker_release in ("MV", "MZ")
 
     @property
     def is_rpgmaker_mv_legacy(self) -> "Optional[bool]":
