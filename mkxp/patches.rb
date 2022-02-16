@@ -31,11 +31,6 @@ module Preload
             .imported?(nil)
             .include?("======\nMoonpearl's Scene_Base\n-----")
             .flag!(:redefinitions_overwrite_class),
-        #Patch.new("Fix auto-fullscreen code in MOG_Animated Title")
-        #    .include?("MOG_Animated Title Sofia") # Still broken for other reasons
-        #    .sub!(/\$showm = .*$/, "Graphics.fullscreen = true")
-        #    .sub!(/\$showm.call.*$/, "nil")
-        #    .sub!(%q{Graphics.transition(MOG::TRANS_TIME, "Graphics/Transitions/" + MOG::TRANS_TITLE )}, "nil"),
         # Generic Inline Patches
         Patch.new("Disable all font effects")
             .flag?(:no_font_effects) # KAWARIKI_MKXP_NO_FONT_EFFECTS
@@ -48,9 +43,5 @@ module Preload
             .if?{|script| script.context[:rgss_version] < 3} # Never on VX Ace, which shipped 1.9
             .match?("self.type", /\Wtype\.to_s\W/, /\Winstance_methods\.include\?\(['"%]/)
             .then!{require "ruby18.rb"},
-        Patch.new("Replace Win32API INI methods") # this should probably be a last resort. Better to properly patch/port the scripts
-            .match?(/Win32API\.new\(['"]kernel32['"],\s*["'](Get|Write)PrivateProfile(Int|String)["'],.*,\s*["']i["']\)/)
-            .then!{require "PreloadIni.rb"}
-            .sub!(/Win32API\.new\(['"]kernel32['"],\s*["'](Get|Write)PrivateProfile(Int|String)["'],.*,\s*["']i["']\)/, "Preload::Ini::\\1PrivateProfile\\2")
     ]
 end

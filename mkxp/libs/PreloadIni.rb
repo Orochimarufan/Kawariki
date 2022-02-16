@@ -426,36 +426,5 @@ module Preload
             end
             File.rename(temp_name, filename)
         end
-
-        # For easy substitution
-        # Use lambda to mimic Win32API.new return value
-        GetPrivateProfileInt = ->(appname, keyname, default, filename) do
-            s = readIniString filename, appname, keyname
-            s.nil? ? default : s.to_i
-        end
-
-        GetPrivateProfileString = ->(appname, keyname, default, ret, size, filename) do
-            if appname.nil? then
-                res = readIniSections(filename).join("\0") + "\0"
-            elsif keyname.nil? then
-                res = readIniKeys(filename, appname).join("\0") + "\0"
-            else
-                s = readIniString filename, appname, keyname
-                res = s.nil? ? (default.nil? ? "" : default) : s
-            end
-            # C-String dance
-            size -= 1
-            if res.size > size then
-                res.slice!(size...)
-                res[size-1] = "\0" if appname.nil? or keyname.nil?
-            end
-            ret[...res.size] = res
-            ret[res.size] = "\0"
-            res.size
-        end
-
-        WritePrivateProfileString = ->(appname, keyname, value, filename) do
-            writeIniString filename, appname, keyname, value
-        end
     end
 end

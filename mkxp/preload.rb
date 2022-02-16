@@ -45,7 +45,7 @@ module Preload
         end
 
         def each_script
-            (0...@scripts.size-1).each {|i| yield script i}
+            (0...@scripts.size).each {|i| yield script i}
         end
 
         def script_loc(scriptid)
@@ -397,8 +397,9 @@ module Preload
             end
             print "Patched #{script.loc}: #{script.log.join(', ')}" if script.log.size > 0
             # Warn if Win32API references in source
-            if script.source.include? "Win32API.new"  then
+            if script.source.include? "Win32API.new" then
                 print "Warning: Script #{script.loc} uses Win32API."
+                require "Win32API.rb"
             end
             # Restore encoding
             script.source.force_encoding e
@@ -414,8 +415,12 @@ module Preload
             dump = ctx[opt]
             print "Dumping all scripts to %s" % dump
             Dir.mkdir dump unless Dir.exist? dump
+            fn_format = "%0#{ctx.script_id_digits}d%s%s%s"
             ctx.each_script do |script|
-                filename = "%0#{Math.log10(ctx.script_count).ceil}d %s.rb" % [script.index, script.name.tr(NoFilenameChars, "_")]
+                filename = fn_format % [script.index,
+                                        script.name.empty? ? "" : " ",
+                                        script.name.tr(NoFilenameChars, "_"),
+                                        script.source.empty? ? "" : ".rb"]
                 File.write File.join(dump, filename), script.source
             end
         end
