@@ -1,9 +1,12 @@
 
-from .app import App
-
 from pathlib import Path
+from shutil import rmtree
+from tarfile import TarFile, TarInfo
+from tarfile import open as taropen
+from urllib.error import URLError
+from urllib.request import urlopen
 
-import urllib.request
+from .app import App
 
 
 def download_progress_tar(app: App, url: str, dest: Path, description: str="Downloading file...", *, modify_entry=None):
@@ -15,30 +18,28 @@ def download_progress_tar(app: App, url: str, dest: Path, description: str="Down
     :param description: Description text for the progress dialog
     :param modify_entry: May be a function (entry: TarInfo)->None to modify archive entries before extracting
     """
-    with a.show_progress(f"{description}\n\nConnecting") as p:
+    with app.show_progress(f"{description}\n\nConnecting") as p:
         try:
-            with urllib.request.urlopen(url) as f:
-                f: urllib.response.addinfourl
+            with urlopen(url) as f:
                 maxi = p.maximum = int(f.info().get("content-length", 0))
-                with tarfile.open(mode="r|*", fileobj=f, encoding="utf-8") as tar:
-                    tar: tarfile.TarFile
+                with taropen(mode="r|*", fileobj=f, encoding="utf-8") as tar:
                     dest.mkdir()
                     while info := tar.next():
-                        info: tarfile.TarInfo
                         if modify_entry is not None:
-                            modify_entry(info)
-                        p.text = f"{progress_header}\n\nExtracting '{info.name}'"
+                            if modify_entry(info) is False:
+                                continue
+                        p.text = f"{description}\n\nExtracting '{info.name}'"
                         # Make sure we never go over 100%
                         if info.offset >= maxi:
                             p.maximum = info.offset + 1
                         p.progress = info.offset
                         # Actually do the work
                         tar.extract(info, dest)
-        except urllib.request.URLError as e:
-            r.show_error(f"Could not connect to '{url}':\n{e.reason}")
+        except URLError as e:
+            app.show_error(f"Could not connect to '{url}':\n{e.reason}")
             raise
         except:
             import traceback
-            r.show_error(f"Error downloading from '{url}':\n\n{traceback.format_exc()}")
-            shutil.rmtree(nwjs.get_path("dist"), ignore_errors=True)
+            app.show_error(f"Error downloading from '{url}':\n\n{traceback.format_exc()}")
+            rmtree(dest, ignore_errors=True)
             raise

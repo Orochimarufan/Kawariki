@@ -147,10 +147,10 @@ class Runtime(IRuntime):
             # Figure out filename, strip prefix
             # there isn't really a good way of figuring out a common prefix in stream mode
             # so just strip the leading path component if it starts with nwjs- for now
-            if '/' in info.name:
-                dir, name = info.name.split("/", 1)
+            if '/' in entry.name:
+                dir, name = entry.name.split("/", 1)
                 if dir.startswith("nwjs-"):
-                    info.name = name
+                    entry.name = name
 
         try:
             download_progress_tar(self.app, nwjs.info["dist_url"], nwjs.get_path("dist"),
