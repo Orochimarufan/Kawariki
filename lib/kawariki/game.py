@@ -37,12 +37,14 @@ class Game:
     # Engine detection
     # +-------------------------------------------------+
     RPGMAKER_INFO_RE    = re_compile(r'''Utils.RPGMAKER_(VERSION|NAME)\s*\=\s*["']([^"']+)["']''') # rpg_core.js/rmmz_core.js
+    TYRANO_VERSION_RE   = re_compile(r'''(?<!\w)version:\s*(\d+),''') # tyrano/plugins/kag.js
 
     def detect(self):
         # Do all engine detection in a single run
         # Ensure all attributes are initialized to None
         self.rpgmaker_release = None
         self.rpgmaker_version = None
+        self.tyrano_version = None
 
         # NW.js
         if pkg := self.package_nw:
@@ -56,6 +58,11 @@ class Game:
                                 self.rpgmaker_version = tuple(int(x) for x in m.group(2).split('.'))
                             elif m.group(1) == "NAME":
                                 self.rpgmaker_release = m.group(2)
+
+                # Detect Tyrano Builder
+                if fs.exists("/tyrano/plugins/kag/kag.js"):
+                    if m := self.TYRANO_VERSION_RE.search(fs.read_text("/tyrano/plugins/kag/kag.js")):
+                        self.tyrano_version = m.group(1)
 
         # Detect legacy RPGMaker (RGSS)
         # TODO: parse Game.ini for Library=
@@ -88,3 +95,8 @@ class Game:
     def is_rpgmaker_mv_legacy(self) -> "Optional[bool]":
         # Check for old RPGMaker MV version
         return self.rpgmaker_release == "MV" and self.rpgmaker_version is not None and self.rpgmaker_version < (1, 6)
+
+    # +-------------------------------------------------+
+    # Tyrano Script
+    # +-------------------------------------------------+
+    tyrano_version = DetectedProperty[Optional[int]](detect)

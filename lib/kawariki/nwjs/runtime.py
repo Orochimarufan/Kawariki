@@ -137,6 +137,8 @@ class Runtime(IRuntime):
                     if nwjs is None:
                         self.app.show_error("No NW.js version suitable for RMMV before 1.6 found (requires NW.js older than 0.13)\nYou can force an incompatible version using --nwjs, but YMMV")
                         raise ErrorCode(5)
+        elif game.tyrano_version:
+            print(f"Looks like Tyrano builder v{game.tyrano_version}")
 
         if nwjs is None:
             if (nwjs := self.get_nwjs_version(min=(0, 13), sdk=sdk)) is None:
@@ -265,6 +267,16 @@ class Runtime(IRuntime):
         if game.rpgmaker_release in ("MV","MZ"):
             # Disable this if we can detect a rmmv  plugin that provides remapping?
             inject_scripts.append(self.base / 'injects/remap-mv.js')
+
+        # Patch Tyrano builder https://github.com/ShikemokuMK/tyranoscript/issues/87
+        if game.tyrano_version is not None:
+            print("Patching tyrano builder to assume PC")
+            with overlay_or_clobber(pkg, proc, "tyrano/libs.js", "a") as f:
+                f.write("""\n\n// Kawariki Patch\n$.userenv =  function(){return "pc";};\n""")
+
+        if conf["main"].startswith("app://"):
+            conf["main"] = conf["main"][6:]
+            print("Fixed old package.json/main syntax")
 
         # Patch package json
         if nwjs.version >= (0, 19):
