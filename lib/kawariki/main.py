@@ -95,6 +95,7 @@ def add_common_args(parser: argparse.ArgumentParser, env, *, gamepath=True, nwjs
     if nwjs:
         parser.add_argument("--nwjs", help="Use specified NW.js version from 'nwjs-versions.json'", default=env.get("nwjs"))
     parser.add_argument("--no-overlayns", help="Don't try to use linux user namespaces", action="store_true")
+    parser.add_argument("--no-unpack", help="Don't allow unpacking packaged apps to a temporary directory", action="store_true")
 
 def parse_args(argv, env):
     # Parse commandline
@@ -143,6 +144,8 @@ def main(app, argv) -> int:
     env = {
         "sdk": check_environ("KAWARIKI_SDK", env_bool),
         "nwjs": check_environ("KAWARIKI_NWJS", str),
+        "no_overlayns": check_environ("KAWARIKI_NO_OVERLAYNS", env_bool),
+        "no_unpack": check_environ("KAWARIKI_NO_UNPACK", env_bool),
     }
 
     args = parse_args(argv, env)
@@ -190,7 +193,7 @@ def main(app, argv) -> int:
 
     if args.action == "run":
         # Ignore --wait for now
-        return runtime.run(game, args.game_args, nwjs_name=args.nwjs, dry=args.dry, sdk=args.sdk, no_overlayns=args.no_overlayns)
+        return runtime.run(game, args.game_args, nwjs_name=args.nwjs, dry=args.dry, sdk=args.sdk, no_overlayns=args.no_overlayns, no_unpack=args.no_unpack)
     elif args.action == "patch":
         return run_patcher(runtime, game, args)
     else:

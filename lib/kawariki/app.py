@@ -61,7 +61,7 @@ class App:
 
 class IRuntime:
     @abstractmethod
-    def run(self, game: Game, arguments: Sequence[str], *, nwjs_name=None, dry=False, sdk=None, no_overlayns=False) -> int:
+    def run(self, game: Game, arguments: Sequence[str], *, nwjs_name=None, dry=False, sdk=None, no_overlayns=False, no_unpack=False) -> int:
         pass
     @abstractmethod
     def get_patcher(self, game: Game):
