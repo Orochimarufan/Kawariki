@@ -236,7 +236,7 @@ class Runtime(IRuntime):
         bg_scripts = [self.base / 'injects/case-insensitive-nw.js']
         inject_scripts = []
 
-        if game.rpgmaker_release == "MV":
+        if game.rpgmaker_release in ("MV","MZ"):
             # Disable this if we can detect a rmmv  plugin that provides remapping?
             inject_scripts.append(self.base / 'injects/remap-mv.js')
 
@@ -282,7 +282,9 @@ class Runtime(IRuntime):
 
         # FIXME: differentiate between overlayns and game/nwjs failure
         #        and offer to re-try without overlayns/greenworks support
-        proc.exec()
+        if not dry:
+            proc.exec()
+        proc.cleanup()
 
         return 0
 

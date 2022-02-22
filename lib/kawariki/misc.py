@@ -2,36 +2,43 @@
 #   Misc. utilities
 # :---------------------------------------------------------------------------:
 
-import os.path
-import shlex
-import shutil
-import textwrap
+from errno import EXDEV
+from os import link, unlink
+from os.path import exists
+from shlex import join as shlex_join
+from shutil import copy2
+from textwrap import dedent
+from typing import Generic, TypeVar, Union, overload
+
+T = TypeVar("T")
 
 
 def version_str(ver: tuple):
     return '.'.join(map(str, ver))
 
+
 def copy_unlink(src, dst):
     # Unlink first to be able to overwrite write-protected files
-    if os.path.exists(dst):
-        os.unlink(dst)
-    return shutil.copy2(src, dst)
+    if exists(dst):
+        unlink(dst)
+    return copy2(src, dst)
 
 def hardlink_or_copy(src, dst):
     try:
-        os.link(src, dst)
+        link(src, dst)
     except OSError as e:
-        if e.errno != errno.EXDEV:
+        if e.errno != EXDEV:
             raise
     else:
         return
-    shutil.copy2(src, dst)
+    copy2(src, dst)
+
 
 def format_launcher_script(*args, append_args=True):
-        return textwrap.dedent(f'''\
+        return dedent(f'''\
             #!/bin/sh
             cd "`dirname "$0"`"
-            exec {shlex.join(map(str, args))}{' "$@"' if append_args else ""}
+            exec {shlex_join(map(str, args))}{' "$@"' if append_args else ""}
             ''')
 
 

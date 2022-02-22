@@ -7,7 +7,7 @@ from shlex import join as shlex_join
 from subprocess import call
 from sys import stderr, stdout
 from tempfile import NamedTemporaryFile, TemporaryDirectory
-from typing import (IO, Any, BinaryIO, Callable, Literal, MutableMapping,
+from typing import (IO, Any, BinaryIO, Callable, List, Literal, MutableMapping,
                     NoReturn, Optional, Sequence, TextIO, Union, overload)
 
 from .app import App
@@ -19,7 +19,7 @@ class ProcessLaunchInfo:
     """ Collects information needed to execute a process """
 
     app: App
-    argv: Sequence[PathLike]
+    argv: List[PathLike]
     environ: dict[str, str]
     workingdir: Optional[PathLike]
     _overlayns: list[str]
@@ -27,7 +27,7 @@ class ProcessLaunchInfo:
 
     def __init__(self, app: App, argv: Sequence[PathLike]):
         self.app = app
-        self.argv = argv
+        self.argv = list(argv)
         self.environ = environ.copy()
         self.workingdir = None
         self._overlayns = []
@@ -60,7 +60,8 @@ class ProcessLaunchInfo:
     # Temporary files
     @cached_property
     def _tempdir(self) -> TemporaryDirectory:
-        tempdir = TemporaryDirectory()
+        tempdir = TemporaryDirectory(prefix="kawariki-")
+        print("Created temporary directory: ", tempdir.name)
         self._cleanups.append(tempdir.cleanup)
         return tempdir
 
@@ -113,7 +114,7 @@ class ProcessLaunchInfo:
             f.flush()
 
         # Do exec
-        if not self.cleanup:
+        if not self._cleanups:
             if self.workingdir is not None:
                 chdir(self.workingdir)
             execve(argv[0], argv, env)
@@ -126,9 +127,9 @@ class ProcessLaunchInfo:
     # TODO: add a call() variant that isn't NoReturn()
 
     # Cleanup
-    def at_cleanup(self, cb: Callable[[], Any]):
+    def at_cleanup(self, cb: Callable[[], Any]) -> None:
         self._cleanups.append(cb)
 
-    def cleanup(self):
-        for cleanup in self._cleanups:
+    def cleanup(self) -> None:
+        for cleanup in reversed(self._cleanups):
             cleanup()

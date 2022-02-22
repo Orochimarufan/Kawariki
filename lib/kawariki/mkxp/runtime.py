@@ -113,7 +113,7 @@ class Runtime(IRuntime):
             config["rgssVersion"] = ri[1][0]
 
         hint = game.binary_name_hint
-        if hint is not None and hint not in (".", "Game.exe"):
+        if hint is not None and hint.lower() not in (".", "game.exe"):
             if hint.endswith(".exe"):
                 config["execName"] = hint[:-4]
 
