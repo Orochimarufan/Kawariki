@@ -18,13 +18,24 @@ module Preload
             .imported?(nil)
             .include?("def snapshot(filename = 'Data/snap', quality = 0)")
             .replace!("XP_CustomResolution.rb"),
-        Patch.new("Shim Glitchfinder's Key Input with MKXP builtins")
+        Patch.new("Glitchfinder's Key Input: Shim with MKXP builtins")
             .imported?(nil)
             .include?("unless method_defined?(:keyinputmodule_input_update)")
             .replace!("Glitchfinder_Keyboard_Stub.rb"),
-        Patch.new("MKXP includes Game-Font loading even in RMXP mode")
+        Patch.new("Auto Font Install: Already included in MKXP")
             .imported?(nil)
             .include?("# ** Auto Font Install")
+            .remove!,
+        Patch.new("Extended Music Script: MKXP already supports .mod. other formats aren't available.")
+            .imported?(nil)
+            .include?("# Extended Music Script Version 3.5")
+            .then!{|script|
+                return if script.context.flag? :incompatible_bgm_checked
+                unsupp = "wma,psf,minipsf,psf2,minipsf2,gsf,minigsf,usf,miniusf,hps,dsp,spc,gym,cym".split(",")
+                # TODO: Find unsupported files in Audio/BGM. Then show msgbox if no converted versions available
+                # Official MKXP-Z also doesn't support mp3
+                script.context.mark :incompatible_bgm_checked
+            }
             .remove!,
         # Specific Inline Patches
         Patch.new("Try to fix superclass mismatches from MP Scene_Base")

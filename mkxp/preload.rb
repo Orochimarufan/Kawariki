@@ -91,7 +91,7 @@ module Preload
         end
 
         # Options
-        def set(sym, value)
+        def set(sym, value=true)
             @options.store sym, value unless value.nil?
         end
 

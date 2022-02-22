@@ -54,7 +54,7 @@ module Win32API
             "WritePrivateProfileStringA" => Kernel32::WritePrivateProfileString,
         },
 
-        "steam_api.dll" => {
+        "steam_api" => {
             # TODO: Forward to native steamapi?
             "SteamAPI_Init" => ->{1},
             "SteamAPI_Shutdown" => ->{},
@@ -62,6 +62,7 @@ module Win32API
     }
 
     def self.new(dllname, func, *rest)
+        dllname = dllname[...-4] if dllname[...-4] == ".dll"
         lib = Libraries[dllname]
         unless lib.nil? then
             result = lib[func]
