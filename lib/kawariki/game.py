@@ -6,6 +6,7 @@ from functools import cached_property
 from pathlib import Path
 from re import compile as re_compile
 from typing import Optional, Tuple
+from .nwjs.package import PackageNw
 
 __all__ = ["Game"]
 
@@ -40,6 +41,8 @@ class Game:
         if pkg := self.package_json:
             return pkg.parent.relative_to(self.root)
         return None
+    def package_nw(self) -> Optional[PackageNw]:
+        return PackageNw.find(self.root, self.binary_name_hint)
 
     @property
     def is_nwjs_app(self) -> bool:

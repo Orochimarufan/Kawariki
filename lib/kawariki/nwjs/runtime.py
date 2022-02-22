@@ -2,16 +2,18 @@ import json
 import os
 import shlex
 import subprocess
-import tempfile
+from tempfile import NamedTemporaryFile
 from functools import cached_property
 from pathlib import Path
 from shutil import copytree, copyfileobj
 from typing import Optional, Sequence, Union
+from contextlib import contextmanager
 
 from ..app import App, IRuntime
 from ..game import Game
 from ..misc import ErrorCode, copy_unlink, version_str
 from ..process import ProcessLaunchInfo
+from .package import PackageNw
 
 
 class NWjs:
@@ -47,6 +49,22 @@ class NWjs:
 
     def __repr__(self):
         return f"<Runtime.NWjs {version_str(self.version)} '{self.dist}' at 0x{id(self):x}>"
+
+
+@contextmanager
+def overlay_or_clobber(pkg: PackageNw, proc: ProcessLaunchInfo, filename: str, mode="w"):
+    path = pkg.path / filename
+    if pkg.may_clobber:
+        f = path.open(mode)
+        yield f
+        f.close()
+    else:
+        with proc.temp_file(prefix=f"{path.stem}-", suffix=path.suffix) as f:
+            if mode == "a":
+                with path.open("r") as fs:
+                    copyfileobj(fs, f)
+            yield f
+            proc.overlayns_bind(f.name, path)
 
 
 class Runtime(IRuntime):
@@ -179,8 +197,8 @@ class Runtime(IRuntime):
     # +-------------------------------------------------+
     #   Run NW.js for Game
     # +-------------------------------------------------+
-    def _inject_file(self, game, proc, mode, scripts):
-        with tempfile.NamedTemporaryFile("w", dir=game.package_dir, prefix=f"{mode}-", suffix=".js", delete=False) as f:
+    def _inject_file(self, pkg: PackageNw, proc: ProcessLaunchInfo, mode, scripts):
+        with NamedTemporaryFile("w", dir=pkg.path, prefix=f"{mode}-", suffix=".js", delete=False) as f:
             name = os.path.basename(f.name)
             f.write(f"// Kawariki NW.js {mode} script\n")
             f.write(f"console.log('[Kawariki] Injected {name}');\n")
@@ -206,18 +224,25 @@ class Runtime(IRuntime):
             proc.at_cleanup(lambda: os.unlink(f.name))
             return name
 
-    def overlay_files(self, game, nwjs, proc):
+    def overlay_files(self, game: Game, pkg: PackageNw, nwjs: NWjs, proc: ProcessLaunchInfo):
         # Use some namespace magic to leave the game install clean
         # This requires unprivileged user namespaces to be enabled in the kernel
         # In some versions of Ubuntu/Debian it can be enabled with 'sysctl -w kernel.unprivileged_userns_clone=1'
 
+        if pkg.is_archive:
+            raise RuntimeError("Cannot overlay on archived package")
+
         # Patch native greenworks (Steamworks API)
-        for path in game.root.rglob("greenworks.js"):
+        for path in pkg.path.rglob("greenworks.js"):
             if not nwjs.has("greenworks"):
                 self.app.show_warn(f"Greenworks not available on NW.js version '{nwjs.name}' ({nwjs.dist})")
                 break
             print(f"Patching Greenworks at '{path}'")
             ppath = path.parent
+            # Just clobber files if we extracted package to temp
+            if pkg.may_clobber:
+                copytree(nwjs.get_path("greenworks"), ppath, dirs_exist_ok=True)
+                continue
             # Unfortunately, overlayfs is currently incompatible with casefolding-enabled ext4.
             # Steam libraries are very likely to be on such a filesystem though.
             #overlayns.append("-o")
@@ -235,33 +260,28 @@ class Runtime(IRuntime):
         # TODO: make configurable
         bg_scripts = [self.base / 'injects/case-insensitive-nw.js']
         inject_scripts = []
+        conf = pkg.read_json()
 
         if game.rpgmaker_release in ("MV","MZ"):
             # Disable this if we can detect a rmmv  plugin that provides remapping?
             inject_scripts.append(self.base / 'injects/remap-mv.js')
 
         # Patch package json
-        with open(game.package_json) as f:
-            pkg = json.load(f)
         if nwjs.version >= (0, 19):
             if bg_scripts:
-                pkg['bg-script'] = self._inject_file(game, proc, "preload", bg_scripts)
+                conf['bg-script'] = self._inject_file(pkg, proc, "preload", bg_scripts)
             if inject_scripts:
-                pkg['inject_js_start'] = self._inject_file(game, proc, "inject", inject_scripts)
+                conf['inject_js_start'] = self._inject_file(pkg, proc, "inject", inject_scripts)
         else:
             if bg_scripts or inject_scripts:
-                pkg['inject_js_start'] = self._inject_file(game, proc, "inject", bg_scripts + inject_scripts)
-        with proc.temp_file(prefix="package-", suffix=".json") as f:
-            json.dump(pkg, f)
-            proc.overlayns_bind(f.name, game.package_json)
+                conf['inject_js_start'] = self._inject_file(pkg, proc, "inject", bg_scripts + inject_scripts)
 
-    def run(self, game, arguments: Sequence[str], nwjs_name=None, dry=False, sdk=None, no_overlayns=False) -> int:
+        with overlay_or_clobber(pkg, proc, pkg.json) as f:
+            json.dump(conf, f)
+
+    def run(self, game, arguments: Sequence[str], nwjs_name=None, dry=False, sdk=None, no_overlayns=False, no_unpack=False) -> int:
         if not game.is_nwjs_app:
             raise RuntimeError("Called nwjs.Runtime.run with non-NW.js game")
-
-        if not game.package_json:
-            self.app.show_error(f"{game.root}\ndoesn't look like a RPGMaker MV/MZ (or other NW.js) game")
-            return 3
 
         # Get suitable NW.js distro
         try:
@@ -269,13 +289,27 @@ class Runtime(IRuntime):
         except ErrorCode as e:
             return e.code
 
-        proc = ProcessLaunchInfo(self.app, [nwjs.binary, game.package_dir, *arguments])
+        pkg = game.package_nw
+        proc = ProcessLaunchInfo(self.app, [nwjs.binary])
+
+        # === Maybe unpack archive ===
+        if pkg.is_archive:
+            if no_unpack:
+                self.app.show_warn("Running archived NW.js apps without unpacking is not fully supported.")
+                no_overlayns = True
+            else:
+                tmp = proc.temp_dir(prefix="package-", suffix=".nw")
+                print("Unpacking app to: ", tmp.name)
+                pkg = pkg.unarchive(tmp.name, as_temp=True)
+
+        path = pkg.path.relative_to(game.root) if pkg.path.is_relative_to(game.root) else pkg.path.resolve()
+        proc.argv.extend([path, *arguments])
 
         # === Patch some game files ===
         if no_overlayns:
             self.app.show_warn("Overlayns is disabled. Plugin and Greenworks support not available.")
         else:
-            self.overlay_files(game, nwjs, proc)
+            self.overlay_files(game, pkg, nwjs, proc)
 
         # === Execute ===
         print(f"Running {proc.argv_join()} in {game.root}")
