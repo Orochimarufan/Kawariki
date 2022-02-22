@@ -6,6 +6,8 @@ from functools import cached_property
 from pathlib import Path
 from re import compile as re_compile
 from typing import Optional, Tuple
+
+from .misc import DetectedProperty
 from .nwjs.package import PackageNw
 
 __all__ = ["Game"]
@@ -20,82 +22,59 @@ class Game:
         self.binary_name_hint = binary_name_hint
 
     # +-------------------------------------------------+
-    # NW.js detection
+    # NW.js
     # +-------------------------------------------------+
     @cached_property
-    def package_json(self) -> "Optional[Path]":
-        if (p := self.root / "package.json").exists():
-            return p
-        elif (p := self.root / "www" / "package.json").exists():
-            return p
-        else:
-            # Try to find package.json
-            for p in self.root.rglob("package.json"):
-                print(f"Using non-standard package.json location {p}")
-                return p
-        return None
-
-    @property
-    def package_dir(self) -> "Optional[Path]":
-        """ Directory containing package.json, relative to game root """
-        if pkg := self.package_json:
-            return pkg.parent.relative_to(self.root)
-        return None
     def package_nw(self) -> Optional[PackageNw]:
         return PackageNw.find(self.root, self.binary_name_hint)
 
     @property
     def is_nwjs_app(self) -> bool:
         # TODO: this is very broad
-        return self.package_json is not None
+        return self.package_nw is not None
 
     # +-------------------------------------------------+
-    # RPGMaker detection
+    # Engine detection
     # +-------------------------------------------------+
-    RPGMAKER_INFO_RE = re_compile(r'''Utils.RPGMAKER_(VERSION|NAME)\s*\=\s*["']([^"']+)["']''')
+    RPGMAKER_INFO_RE    = re_compile(r'''Utils.RPGMAKER_(VERSION|NAME)\s*\=\s*["']([^"']+)["']''') # rpg_core.js/rmmz_core.js
 
-    @cached_property
-    def rpgmaker_info(self) -> "Optional[Tuple[str, Tuple]]":
-        # Find RPGMaker core file
-        # MV: rpg_core.js, MZ: rmmz_core.js
-        for rpgcore in self.root.rglob("r*_core.js"):
-            with open(rpgcore, "r") as f:
-                kind = version = None
-                for l in f:
-                    if m := self.RPGMAKER_INFO_RE.search(l):
-                        if m.group(1) == "VERSION" :
-                            version = tuple(int(x) for x in m.group(2).split('.'))
-                        elif m.group(1) == "NAME":
-                            kind = m.group(2)
-                        if version is not None and kind is not None:
-                            return kind, version
+    def detect(self):
+        # Do all engine detection in a single run
+        # Ensure all attributes are initialized to None
+        self.rpgmaker_release = None
+        self.rpgmaker_version = None
+
+        # NW.js
+        if pkg := self.package_nw:
+            with pkg.open_fs() as fs:
+                # Detect RPGMaker MV, MZ
+                for candidate in ("/www/js/rpg_core.js", "/js/rmmz_core.js"):
+                    if fs.exists(candidate):
+                        content = fs.read_text(candidate)
+                        for m in self.RPGMAKER_INFO_RE.finditer(content):
+                            if m.group(1) == "VERSION":
+                                self.rpgmaker_version = tuple(int(x) for x in m.group(2).split('.'))
+                            elif m.group(1) == "NAME":
+                                self.rpgmaker_release = m.group(2)
+
         # Detect legacy RPGMaker (RGSS)
+        # TODO: parse Game.ini for Library=
         for dllname in self.root.rglob("RGSS*.dll"):
             ver = dllname.name[4:].rsplit(".", 1)[0]
-            if ver == "301":
-                return "VXAce", (3,0,1)
-            if ver == "300":
-                return "VXAce", (3,0,0)
-            if ver == "104E":
-                return "XP", (1,0,4,'e')
-            print(f"Looks like old RPGMaker, but not implemented: {dllname}")
-        return None
+            vt = tuple(int(d) if d.isdigit() else d for d in ver)
+            if isinstance(vt[0], int) and vt[0] >= 1 and vt[0] <= 3:
+                self.rpgmaker_release = ("XP", "VX", "VXAce")[vt[0]]
+                self.rpgmaker_version = vt
 
-    @property
-    def rpgmaker_release(self) -> "Optional[str]":
-        if i := self.rpgmaker_info:
-            return i[0]
-        return None
-
-    @property
-    def rpgmaker_version(self) -> "Optional[Tuple]":
-        if i := self.rpgmaker_info:
-            return i[1]
-        return None
+    # +-------------------------------------------------+
+    # RPGMaker
+    # +-------------------------------------------------+
+    rpgmaker_release = DetectedProperty[Optional[str]](detect)
+    rpgmaker_version = DetectedProperty[Optional[Tuple[int, ...]]](detect)
 
     @property
     def is_rpgmaker(self) -> bool:
-        return self.rpgmaker_info is not None
+        return self.rpgmaker_release is not None
 
     @property
     def is_rpgmaker_rgss(self) -> bool:
@@ -108,6 +87,4 @@ class Game:
     @property
     def is_rpgmaker_mv_legacy(self) -> "Optional[bool]":
         # Check for old RPGMaker MV version
-        if i := self.rpgmaker_info:
-            return i[0] == "MV" and i[1] < (1, 6)
-        return None
+        return self.rpgmaker_release == "MV" and self.rpgmaker_version is not None and self.rpgmaker_version < (1, 6)

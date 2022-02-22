@@ -48,3 +48,37 @@ class ErrorCode(Exception):
         super().__init__()
         self.code = code
 
+
+class DetectedProperty(Generic[T]):
+    """
+    Property that gets initialized by a different method
+
+    Works like functools.cached_property, but useful when one method
+    is responsible for a number of properties:
+
+    class Example:
+        def detect(self):
+            self.x = "Foo"
+            self.y = "Bar"
+
+        x = DetectedProperty[str](detect)
+        y = DetectedProperty[str](detect)
+    """
+    def __init__(self, func, doc=None):
+        self.func = func
+        self.attrname = None
+        self.__doc__ = doc
+
+    def __set_name__(self, owner, name):
+        self.attrname = name
+
+    @overload
+    def __get__(self, instance: None, owner=None) -> 'DetectedProperty[T]': ...
+    @overload
+    def __get__(self, instance: object, owner=None) -> T: ...
+
+    def __get__(self, instance, owner=None) -> Union[T, 'DetectedProperty[T]']:
+        if instance is None:
+            return self
+        self.func(instance)
+        return instance.__dict__[self.attrname]
