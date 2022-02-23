@@ -70,7 +70,7 @@ class Game:
             ver = dllname.name[4:].rsplit(".", 1)[0]
             vt = tuple(int(d) if d.isdigit() else d for d in ver)
             if isinstance(vt[0], int) and vt[0] >= 1 and vt[0] <= 3:
-                self.rpgmaker_release = ("XP", "VX", "VXAce")[vt[0]]
+                self.rpgmaker_release = ("XP", "VX", "VXAce")[vt[0]-1]
                 self.rpgmaker_version = vt
 
     # +-------------------------------------------------+

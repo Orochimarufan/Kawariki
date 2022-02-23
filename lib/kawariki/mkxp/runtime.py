@@ -107,10 +107,11 @@ class Runtime(IRuntime):
             "preloadScript": [str(self.preload_path)],
         }
 
-        ri = game.rpgmaker_info
-        if ri is not None and ri[0] in ("XP", "VX", "VXAce"):
+        try:
             # This is important for preload to be able to read it from System::CONFIG
-            config["rgssVersion"] = ri[1][0]
+            config["rgssVersion"] = ("XP", "VX", "VXAce").index(game.rpgmaker_release)+1
+        except ValueError:
+            pass
 
         hint = game.binary_name_hint
         if hint is not None and hint.lower() not in (".", "game.exe"):
