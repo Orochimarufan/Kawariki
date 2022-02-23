@@ -7,9 +7,12 @@ module Preload
         Patch.new("Zeus Fullscreen: Use mkxp builtin fullscreen instead (Alt+Enter)")
             .imported?(:Zeus_Fullscreen)
             .replace!("Zeus_Fullscreen++.rb"),
-        Patch.new("HIME Event Trigger Labels: Fix any_key_pressed? implementation")
+        Patch.new("HimeWorks' Event Trigger Labels: Fix any_key_pressed? implementation")
             .imported?(:TH_EventTriggerLabels)
-            .replace!("HIME_Event_Trigger_Labels.rb"),
+            .replace!("TH_EventTriggerLabels.rb"),
+        Patch.new("HimeWorks' Simple Audio Encryption: Re-Implement with direct path detection")
+            .imported?(:TH_SimpleAudioEncryption)
+            .replace!("TH_SimpleAudioEncryption.rb"),
         Patch.new("Super simple mouse script: Use mkxp mouse API")
             .imported?(nil)
             .include?("SUPER SIMPLE MOUSE SCRIPT")
