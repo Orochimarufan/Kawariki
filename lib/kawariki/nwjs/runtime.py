@@ -316,6 +316,7 @@ class Runtime(IRuntime):
 
         path = pkg.path.relative_to(game.root) if pkg.path.is_relative_to(game.root) else pkg.path.resolve()
         proc.argv.extend([path, *arguments])
+        proc.workingdir = game.root
 
         # === Patch some game files ===
         if no_overlayns:
