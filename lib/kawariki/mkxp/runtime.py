@@ -29,7 +29,7 @@ class MKXP:
     @property
     def dist(self):
         return self.info["dist"]
-    
+
     @property
     def path(self):
         return self._path / "dist" / self.dist
@@ -70,7 +70,7 @@ class Runtime(IRuntime):
         if not version.has("dist_url"):
             self.app.show_error(f"Cannot download MKXP distribution '{version.dist}'\versions.json doesn't specify a download url.")
             raise ErrorCode(8)
-        
+
         def strip_prefix(entry):
             try:
                 index = entry.name.index("/")
@@ -103,26 +103,43 @@ class Runtime(IRuntime):
 
     # Run
     def make_mkxp_config(self, version: MKXP, game: Game) -> str:
-        config: Dict[str, Any] = {
-            "preloadScript": [str(self.preload_path)],
-        }
+        config: Dict[str, Any] = {}
 
+        # RGSS version
         try:
             # This is important for preload to be able to read it from System::CONFIG
             config["rgssVersion"] = ("XP", "VX", "VXAce").index(game.rpgmaker_release)+1
         except ValueError:
             pass
 
+        # Executable base name
         hint = game.binary_name_hint
         if hint is not None and hint.lower() not in (".", "game.exe"):
             if hint.endswith(".exe"):
                 config["execName"] = hint[:-4]
 
-        # TODO: make this global instead
-        if (fpath := game.root / "kawariki-mkxp.json").exists():
-            with open(fpath) as f:
-                # XXX: should this check and disallow overriding preloadScript etc?
-                config.update(json.load(f))
+        # Load defaults from config file
+        def update_from(fpath: Path, *, exclude=frozenset(), merge=True):
+            if fpath.exists():
+                with open(fpath) as f:
+                    for k,v in json.load(f).items():
+                        if k in exclude:
+                            continue
+                        elif k == "rgssVersion" and v == 0:
+                            # Never overwrite version with 0
+                            continue
+                        elif merge and isinstance(v, list):
+                            # Merge lists
+                            config.setdefault(k, []).extend(v)
+                        else:
+                            config[k] = v
+
+        update_from(game.root / "mkxp.json")
+        update_from(self.mkxp_dir / "mkxp.json", exclude={"rgssVersion", "gameFolder", "iconPath", "customScript", "execName"})
+        update_from(game.root / "kawariki-mkxp.json")
+
+        # Preload
+        config.setdefault("preloadScript", []).append(str(self.preload_path))
 
         # TODO: add explicit config for RTP. Is it possible to auto-detect games that need it?
         return json.dumps(config)
