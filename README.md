@@ -4,7 +4,6 @@ Kawariki runtime/compatibility tool
 Kawariki is a Steam Play compatible tool for running games using
 different (usually newer) versions of their engine than they shipped with.
 This includes running games that only have a Windows build on a linux-native version.
-Currently supports NW.js based games (Mainly RPGMaker MV/MZ)
 
 Requires at least Python 3.8.
 
@@ -16,79 +15,53 @@ Just install it into compatibilitytools.d like a custom Proton release. You can 
 select it in the game properties dialog. You shouldn't set it globally in the settings
 dialog as it doesn't try to handle arbitrary Windows games.
 
-Some environment variables are available to influence Kawariki:
-- `KAWARIKI_SDK=1` Use NW.js with DevTools support (like `--sdk`)
-- `KAWARIKI_NWJS=<name>` Use a specific NW.js version (like `--nwjs <name>`)
-
+Some environment variables are available to influence Kawariki.
 These can be used in the Steam launch options like with Proton. E.g. `KAWARIKI_SDK=1 %command%`
+See the runtime documentations for info.
 
 ### CLI
 The CLI brings some options for non-Steam games and developers:
 
-- `./kawariki run <path-to-game>` will try to run a game with custom NW.js (As trough Steam Play)
+- `./kawariki run <path-to-game>` will try to run a game through Kawariki (As trough Steam Play)
 - `./kawariki launcher <path-to-game> [filename]` Will create a launcher script in the game folder that runs the game trough Kawariki
-- `./kawariki patch <path-to-game> -o <new-path>` Makes a copy of the game with replaced NW.js
+<!--
+- `./kawariki patch <path-to-game> -o <new-path>` Makes a copy of the game with it's engine replaced
 
 Note: Patch mode doesn't (currently) support all features
+-->
 
 For more info see `./kawariki --help`
 
-NW.js
------
 
-NW.js based games were the original target for Kawariki.
-Support for patching Greenworks natives is included.
+Runtimes
+--------
 
-### RPGMaker MV and MZ
+Kawariki consists of a number of 'runtimes', each handling games
+built with a specific set of common engines.
 
-While RPGMaker MV and MZ (for the first time) support exporting
-to Linux, many developers do not use this option and some report
-issues with it. However, it appears they are based on
-an unmodified NW.js runtime and it is a viable strategy
-to run Windows exports on a native runtime procured directly
-from the NW.js project. This obviously doesn't extend to
-any native node modules (like Greenworks)
+### NW.js
 
-This is an attempt to build a Steam Play compatible compatibilitytool
-that runs RPGMaker MV/MZ games in a native NW.js runtime.
-It may work with other NW.js based games as well.
+Games based on web technologies and bundled with the
+[NW.js browser engine][nwjs].
 
-### Greenworks
+This includes games based on, among others:
+- RPGMaker MV
+- RPGMaker MZ
+- Tyrano Builder
 
-Some support is included for Greenworks (NW.js Steamworks library).
-This is achieved by trying to replace the game's greenworks library
-with one that includes the correct linux native modules.
+[README][rt-nwjs]
 
-This uses `overlayns-static` (see below)
+### MKXP-Z
 
-The required files can be gotten from the relevant Steam Partner pages
-and https://greenworks-prebuilds.armaldio.xyz/ or built from source.
+There is experimental support for RPGMaker games based on RGSS
+using the [mkxp-z project][mkxp-z].
 
-### nwjs/versions.json
+RPGMaker editions based on RGSS are:
+- RPGMaker XP (RGSS1)
+- RPGMaker VX (RGSS2)
+- RPGMaker VX Ace (RGSS3)
 
-This file specifies the NW.js versions that should be considered.
-Available keys are:
-- `version` *required array-of-numbers* The NW.js version of this distribution (e.g. `[0,54,1]`)
-- `dist` *required string* The name of the directory the distribution is stored in.
-- `dist_url` *string* An URL to download the distribution from if not already available. It must point to a gzip/bzip2/xz compressed tar-archive.
-- `name` *string* An optional name given to the distribution for use with `--nwjs`. Defaults to the value of `dist`.
-- `sdk` *boolean* Wether the distribution is a SDK release (i.e. includes DevTools). Defaults to `false`.
-- `greenworks` *string* Name of a directory containing compatible replacements for the greenworks library. Greenworks is not supported if omitted.
-
-By default, the most recent NW.js distribution listed is chosen.
-
-### Injected Plugins
-
-Custom code can be injected into the game. This (currently) requires `overlayns-static` support (see below) to shadow the game's package.json.
-
-#### Filesystem case-sensitivity
-
-A plugin to handle case-insensitive file lookups is automatically injected into NW.js games launched through Kawariki.
-
-RPGMaker RGSS
--------------
-
-There is experimental support for RGSS based games using mkxp-z.
+[README][rt-mkxp]
 
 
 overlayns-static
@@ -111,3 +84,11 @@ License
 
 The code itself (kawariki) is GPL3+. Generated files like launcher scripts shall be CC0.
 NW.js, Greenworks and Steamworks have their respective licenses.
+
+
+<!-- References -->
+[rt-nwjs]: nwjs/README.md
+[rt-mkxp]: mkxp/README.md
+
+[nwjs]: https://nwjs.io/
+[mkxp-z]: https://roza-gb.gitbook.io/mkxp-z
