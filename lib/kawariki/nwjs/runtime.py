@@ -267,12 +267,14 @@ class Runtime(IRuntime):
         if game.rpgmaker_release in ("MV","MZ"):
             # Disable this if we can detect a rmmv  plugin that provides remapping?
             inject_scripts.append(self.base / 'injects/remap-mv.js')
+        if game.rpgmaker_release == "MV":
+            inject_scripts.append(self.base / 'injects/mv-decrypted-assets.js')
 
         # Patch Tyrano builder https://github.com/ShikemokuMK/tyranoscript/issues/87
         if game.tyrano_version is not None:
             print("Patching tyrano builder to assume PC")
             with overlay_or_clobber(pkg, proc, "tyrano/libs.js", "a") as f:
-                f.write("""\n\n// Kawariki Patch\n$.userenv =  function(){return "pc";};\n""")
+                f.write("""\n\n// Kawariki Patch\njQuery.userenv =  function(){return "pc";};\n""")
 
         if conf["main"].startswith("app://"):
             conf["main"] = conf["main"][6:]
