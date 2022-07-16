@@ -8,12 +8,12 @@ from os.path import exists
 from shlex import join as shlex_join
 from shutil import copy2
 from textwrap import dedent
-from typing import Generic, TypeVar, Union, overload
+from typing import Generic, Sequence, TypeVar, Union, overload
 
 T = TypeVar("T")
 
 
-def version_str(ver: tuple):
+def version_str(ver: Sequence[Union[str, int]]):
     return '.'.join(map(str, ver))
 
 

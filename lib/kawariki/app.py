@@ -2,6 +2,7 @@
 from abc import abstractmethod
 from functools import cached_property
 from pathlib import Path
+from platform import machine, system
 from sys import stderr
 from typing import Sequence
 
@@ -11,9 +12,19 @@ from .ui.common import AKawarikiUi, DummyProgressUi, MsgType
 
 
 class App:
+    app_root: Path
+    overlayns_bin: Path
+    platform: str
+
     def __init__(self, app_root):
         self.app_root = Path(app_root).resolve()
         self.overlayns_binary = self.app_root / "overlayns-static"
+
+        self.platform = f"{system()}-{machine()}".lower()
+
+    @property
+    def dist_path(self) -> Path:
+        return self.app_root / "dist"
 
     # +-------------------------------------------------+
     # Error reporting
@@ -31,7 +42,7 @@ class App:
     @cached_property
     def gui(self) -> AKawarikiUi:
         return create_gui()
-    
+
     def free_gui(self):
         if "gui" in self.__dict__:
             if hasattr(self.gui, "destroy"):

@@ -6,7 +6,7 @@ from pathlib import PurePath
 from shlex import join as shlex_join
 from subprocess import call
 from sys import stderr, stdout
-from tempfile import NamedTemporaryFile, TemporaryDirectory
+from tempfile import NamedTemporaryFile, TemporaryDirectory, mkdtemp
 from typing import (IO, Any, BinaryIO, Callable, List, Literal, MutableMapping,
                     NoReturn, Optional, Sequence, TextIO, Union, overload)
 
@@ -65,9 +65,9 @@ class ProcessLaunchInfo:
         self._cleanups.append(tempdir.cleanup)
         return tempdir
 
-    def temp_dir(self, suffix: Optional[str] = None, prefix: Optional[str] = None) -> TemporaryDirectory:
+    def temp_dir(self, suffix: Optional[str] = None, prefix: Optional[str] = None) -> str:
         """ Create a temporary directory that will be removed on cleanup() """
-        return TemporaryDirectory(suffix, prefix, self._tempdir.name)
+        return mkdtemp(suffix, prefix, self._tempdir.name)
 
     @overload
     def temp_file(self, mode: Union[Literal['w'], Literal['w+']] = "w",

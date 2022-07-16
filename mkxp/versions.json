@@ -1,8 +1,16 @@
 [
     {
         "variant": "mkxp-z",
-        "version": [2,3,0],
-        "dist": "mkxp-z_2.3.0_x64",
-        "dist_url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/mkxp-z_2.3.0_x64.tar.xz"
+        "version": [2, 3, 1],
+        "platforms": ["linux-x86_64"],
+        "binary": "mkxp-z.x86_64",
+        "url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/mkxp-z_2.3.1_x64.tar.xz"
+    },
+    {
+        "variant": "mkxp-z",
+        "version": [2, 3, 0],
+        "platforms": ["linux-x86_64"],
+        "binary": "mkxp-z.x86_64",
+        "url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/mkxp-z_2.3.0_x64.tar.xz"
     }
 ]

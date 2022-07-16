@@ -4,49 +4,30 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Sequence
+from typing import Any, Dict, Sequence, Literal
 from functools import cached_property
 
 from ..app import App, IRuntime
 from ..game import Game
 from ..process import ProcessLaunchInfo
 from ..misc import ErrorCode
+from ..distribution import DistributionInfo, Distribution
 
 
-class MKXP:
-    def __init__(self, info, path):
-        self._path = path
-        self.info = info
+class MKXPDistributionInfo(DistributionInfo):
+    variant: Literal["mkxp-z"]
 
-    @property
-    def version(self):
-        return tuple(self.info["version"])
 
-    @property
-    def name(self):
-        return self.info.get("name", self.dist)
+class MKXP(Distribution):
+    info: MKXPDistributionInfo
 
     @property
-    def dist(self):
-        return self.info["dist"]
+    def variant(self) -> str:
+        return self.info["variant"]
 
     @property
-    def path(self):
-        return self._path / "dist" / self.dist
-
-    def has(self, component):
-        return bool(self.info.get(component, None))
-
-    @property
-    def binary(self):
-        return self.path / "mkxp-z.x86_64"
-
-    @property
-    def available(self):
-        return self.path.exists()
-
-    def __repr__(self):
-        return f"<Runtime.MKXP {version_str(self.version)} '{self.dist}' at 0x{id(self):x}>"
+    def slug(self) -> str:
+        return f"{self.variant}-{self.version_str}-{self.platform}"
 
 
 class Runtime(IRuntime):
@@ -65,34 +46,15 @@ class Runtime(IRuntime):
         :param mkxp: The version to download
         :raise ErrorCode: on error
         """
-        from ..download import download_progress_tar
+        from ..download import download_dist_progress_tar
 
-        if not version.has("dist_url"):
-            self.app.show_error(f"Cannot download MKXP distribution '{version.dist}'\versions.json doesn't specify a download url.")
-            raise ErrorCode(8)
+        download_dist_progress_tar(self.app, version)
 
-        def strip_prefix(entry):
-            try:
-                index = entry.name.index("/")
-            except ValueError:
-                # Skip files in archive root
-                return False
-            entry.name = entry.name[index+1:]
-
-        try:
-            download_progress_tar(self.app, version.info["dist_url"], version.path,
-                description=f"Downloading NW.js distribution '{version.dist}'",
-                modify_entry=strip_prefix)
-        except Exception:
-            raise ErrorCode(10)
-
-        self.app.show_info(f"Finished downloading MKXP distribution '{version.dist}'")
+        self.app.show_info(f"Finished downloading MKXP distribution '{version.name}'")
 
     @cached_property
     def mkxp_versions(self):
-        with open(self.mkxp_dir / "versions.json") as f:
-            versions = json.load(f)
-        return [MKXP(ver, self.mkxp_dir) for ver in versions]
+        return MKXP.load_json(self.mkxp_dir / "versions.json", self.app.dist_path / "mkxp", self.app.platform)
 
     def get_mkxp_version(self):
         # TODO: Make selectable and such

@@ -1,6 +1,5 @@
-/*/dist/*
-/_misc/
-/lib/*
-!/lib/kawariki/
+/dist
 __pycache__
+.mypy_cache
+tmp
 *.tar.xz
