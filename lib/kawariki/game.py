@@ -93,8 +93,8 @@ class Game:
 
     @property
     def is_rpgmaker_mv_legacy(self) -> "Optional[bool]":
-        # Check for old RPGMaker MV version
-        return self.rpgmaker_release == "MV" and self.rpgmaker_version is not None and self.rpgmaker_version < (1, 6)
+        # Check for old RPGMaker MV version. Assume missing version means legacy
+        return self.rpgmaker_release == "MV" and (self.rpgmaker_version is None or self.rpgmaker_version < (1, 6))
 
     # +-------------------------------------------------+
     # Tyrano Script

@@ -149,6 +149,8 @@ class Runtime(IRuntime):
             print(f"Looks like RPGMaker {game.rpgmaker_release} {version_str(game.rpgmaker_version or ())}")
 
             if game.is_rpgmaker_mv_legacy:
+                if game.rpgmaker_version is None:
+                    self.app.show_warn("Missing RPGMaker MV version in rpg_core.js. Assuming old version.")
                 if nwjs is not None:
                     if nwjs.version >= (0, 13):
                         self.app.show_warn(f"Overriding NW.js version for legacy RMMV (before 1.6) game.\nSelected version is {nwjs.version}, but legacy RMMV may only work correctly with NW.js up to 0.12.x")
