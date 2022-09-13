@@ -231,6 +231,16 @@ class Runtime(IRuntime):
                         el.src = path;
                         head.appendChild(el);
                     }
+                    """)
+                for script in scripts:
+                    f.write(f"addScript('file://{script}');\n")
+                f.write("})();")
+            else:
+                os.unlink(f.name)
+                raise ValueError("Unknown _inject_file mode")
+            proc.at_cleanup(lambda: os.unlink(f.name))
+            return name
+
     def overlay_files(self, game: Game, pkg: PackageNw, nwjs: NWjs, proc: ProcessLaunchInfo):
         # Use some namespace magic to leave the game install clean
         # This requires unprivileged user namespaces to be enabled in the kernel
@@ -265,11 +275,41 @@ class Runtime(IRuntime):
                 continue
             copytree(ppath, tempdir, dirs_exist_ok=True)
             copytree(greenworks.path, tempdir, dirs_exist_ok=True, copy_function=copy_unlink)
+            proc.overlayns_bind(tempdir, ppath)
+
+        # TODO: make configurable
+        bg_scripts = [self.base / 'injects/case-insensitive-nw.js']
+        inject_scripts = []
+        conf = pkg.read_json()
+
+        if game.rpgmaker_release in ("MV","MZ"):
+            # Disable this if we can detect a rmmv  plugin that provides remapping?
+            inject_scripts.append(self.base / 'injects/remap-mv.js')
+        if game.rpgmaker_release == "MV":
+            inject_scripts.append(self.base / 'injects/mv-decrypted-assets.js')
+
+        # Patch Tyrano builder https://github.com/ShikemokuMK/tyranoscript/issues/87
+        if game.tyrano_version is not None:
             print("Patching tyrano builder to assume PC")
             with overlay_or_clobber(pkg, proc, "tyrano/libs.js", "a") as f:
                 f.write("""\n\n// Kawariki Patch\njQuery.userenv =  function(){return "pc";};\n""")
 
         if conf["main"].startswith("app://"):
+            conf["main"] = conf["main"][6:]
+            print("Fixed old package.json/main syntax")
+
+        # Patch package json
+        if nwjs.version >= (0, 19):
+            if bg_scripts:
+                conf['bg-script'] = self._inject_file(pkg, proc, "preload", bg_scripts)
+            if inject_scripts:
+                conf['inject_js_start'] = self._inject_file(pkg, proc, "inject", inject_scripts)
+        else:
+            if bg_scripts or inject_scripts:
+                conf['inject_js_start'] = self._inject_file(pkg, proc, "inject", bg_scripts + inject_scripts)
+
+        with overlay_or_clobber(pkg, proc, pkg.json) as f:
+            json.dump(conf, f)
 
     def run(self, game, arguments: Sequence[str], nwjs_name=None, dry=False, sdk=None, no_overlayns=False, no_unpack=False) -> int:
         if not game.is_nwjs_app:
