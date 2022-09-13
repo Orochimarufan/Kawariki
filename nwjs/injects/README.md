@@ -14,10 +14,28 @@ Provides a WebRequest handler that tries to look up missing files case-insensiti
 A file `case-mismatches.json` will be created in the app package directory when the first request with erroneous path casing is made by the app. It is used to cache lookup results and is useful for reporting the detected issues to the developer.
 
 
-remap-mv.js
------------
+rpg-remap.js
+------------
 
-Experimental and WIP modification to allow rebinding keys in RPGMaker MV games that don't natively support it.
+Experimental and WIP modification to allow rebinding keys in RPGMaker MV/MZ games that don't natively support it.
+
+Currently, it always injects a default mapping:
+| Key | | Key |             |
+| - | - | - | ------------- |
+| W | ↑ | E | Confirm       |
+| A | ← | Q | Cancel/Menu   |
+| S | ↓ |   |               |
+| D | → |   |               |
+
+It also provides a Console API:
+```js
+Remap.initial       // The game's initial keymap
+Remap.map           // Configured keymap
+Remap.get()         // Get the currently active keymap
+Remap.apply()       // Apply the configured keymap
+Remap.set(key, act) // Set a key mapping
+Remap.add(map)      // Add multiple key mappings
+```
 
 
 mv-decrypted-assets.js

@@ -296,7 +296,7 @@ class Runtime(IRuntime):
 
         if game.rpgmaker_release in ("MV", "MZ"):
             # Disable this if we can detect a rmmv  plugin that provides remapping?
-            inject_scripts.append(self.base_path / 'injects/remap-mv.js')
+            inject_scripts.append(self.base_path / 'injects/rpg-remap.js')
             if game.rpgmaker_release == "MV" and not game.is_rpgmaker_mv_legacy:
                 inject_scripts.append(self.base_path / 'injects/mv-decrypted-assets.js')
 
