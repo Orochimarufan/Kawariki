@@ -42,6 +42,7 @@
     {
         "alias": ["12", "12-sdk", "rmmv-1.5", "rmmv-legacy", "legacy"],
         "version": [0, 12, 3],
-        "sdk": true
+        "sdk": true,
+        "url": "https://dl.nwjs.io/v0.12.3/nwjs-v0.12.3-{platform}.tar.gz"
     }
 ]

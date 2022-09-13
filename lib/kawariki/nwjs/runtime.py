@@ -41,7 +41,7 @@ class NWjs(Distribution):
 
     def generate_url(self) -> str:
         version = self.version_str
-        return f"https://dl.nwjs.io/v{version}/nwjs-sdk-v{version}-{self.platform}.tar.gz"
+        return f"https://dl.nwjs.io/v{version}/nwjs-{'sdk-' if self.is_sdk else ''}v{version}-{self.platform}.tar.gz"
 
 
 class GreenworksDistribution(Distribution):
