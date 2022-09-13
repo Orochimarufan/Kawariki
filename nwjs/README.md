@@ -94,6 +94,7 @@ Configuration
 - `KAWARIKI_NWJS=<name>` Use a specific NW.js version
 - `KAWARIKI_NO_UNPACK=1` Don't allow unpacking packaged apps to /tmp
 - `KAWARIKI_NO_OVERLAYNS=1` Disallow usage of overlayns-static
+- `KAWARIKI_NWJS_DEVTOOLS=1` Try to open DevTools on startup
 
 ### versions.json
 

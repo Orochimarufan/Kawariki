@@ -310,6 +310,9 @@ class Runtime(IRuntime):
             conf["main"] = conf["main"][6:]
             print("Fixed old package.json/main syntax")
 
+        if os.environ.get("KAWARIKI_NWJS_DEVTOOLS"):
+            code.append("""(typeof nw !== "undefined"? nw : require("nw.gui")).Window.get().showDevTools()""")
+
         # Patch package json
         if nwjs.version >= (0, 19):
             if bg_scripts:
