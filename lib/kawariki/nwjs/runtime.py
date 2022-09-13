@@ -216,11 +216,15 @@ class Runtime(IRuntime):
     # +-------------------------------------------------+
     #   Run NW.js for Game
     # +-------------------------------------------------+
-    def _inject_file(self, pkg: PackageNw, proc: ProcessLaunchInfo, mode, scripts):
+    def _inject_file(self, pkg: PackageNw, proc: ProcessLaunchInfo,
+            mode: Union[Literal["preload"], Literal["inject"]],
+            scripts: Sequence[Path],
+            code: Optional[Sequence[str]]=None):
         with NamedTemporaryFile("w", dir=pkg.path, prefix=f"{mode}-", suffix=".js", delete=False) as f:
+        #with proc.temp_file(prefix=f"{mode}-", suffix=".js") as f:
             name = os.path.basename(f.name)
             f.write(f"// Kawariki NW.js {mode} script\n")
-            f.write(f"console.log('[Kawariki] Injected {name}');\n")
+            f.write(f"console.log('[Kawariki] Injected {os.path.basename(f.name)}');\n")
             if mode == "preload":
                 for script in scripts:
                     f.write(f"require('{script}');\n")
@@ -236,10 +240,13 @@ class Runtime(IRuntime):
                     """)
                 for script in scripts:
                     f.write(f"addScript('file://{script}');\n")
-                f.write("})();")
+                f.write("})();\n")
             else:
                 os.unlink(f.name)
                 raise ValueError("Unknown _inject_file mode")
+            if code:
+                xcode = ";\n  ".join(code)
+                f.write(f"(function() {{\n  {xcode};\n}})();\n")
             proc.at_cleanup(lambda: os.unlink(f.name))
             return name
 
@@ -283,6 +290,7 @@ class Runtime(IRuntime):
         bg_scripts = []
         inject_scripts = []
         conf = pkg.read_json()
+        code = []
 
         bg_scripts.append(self.base_path / 'injects/case-insensitive-nw.js')
 
@@ -306,11 +314,20 @@ class Runtime(IRuntime):
         if nwjs.version >= (0, 19):
             if bg_scripts:
                 conf['bg-script'] = self._inject_file(pkg, proc, "preload", bg_scripts)
-            if inject_scripts:
-                conf['inject_js_start'] = self._inject_file(pkg, proc, "inject", inject_scripts)
+            if inject_scripts or code:
+                conf['inject_js_start'] = self._inject_file(pkg, proc, "inject", inject_scripts, code=code)
+        elif nwjs.version >= (0, 13):
+            if bg_scripts or inject_scripts or code:
+                conf['inject_js_start'] = self._inject_file(pkg, proc, "inject", bg_scripts + inject_scripts, code=code)
         else:
-            if bg_scripts or inject_scripts:
-                conf['inject_js_start'] = self._inject_file(pkg, proc, "inject", bg_scripts + inject_scripts)
+            if bg_scripts or inject_scripts or code:
+                #modify main.html
+                with open(pkg.path / conf["main"]) as f:
+                    html = f.read()
+                fn = self._inject_file(pkg, proc, "inject", bg_scripts + inject_scripts, code=code)
+                html = html.replace("<head>", f"""<head><script src="file://{os.path.realpath(fn)}"></script>""")
+                with overlay_or_clobber(pkg, proc, conf["main"]) as f:
+                    f.write(html)
 
         with overlay_or_clobber(pkg, proc, pkg.json) as f:
             json.dump(conf, f)
