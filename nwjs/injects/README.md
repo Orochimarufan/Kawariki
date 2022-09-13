@@ -68,8 +68,8 @@ v.pollChanged()     // Check if it changed without resetting changed-ness
 ```
 
 
-mv-decrypted-assets.js
-----------------------
+mv-decrypted-assets.js, mz-decrypted-assets.js
+----------------------------------------------
 
-This script modifies RPGMaker MV games to be able to load decrypted assets even when System.json indicates they should be encrypted.
+These scripts modify RPGMaker MV/MZ games to be able to load decrypted assets even when System.json indicates they should be encrypted.
 This is useful e.g. when wanting to mod a game without having to encrypt the modded assets or for sharing assets on disk between different games and/or different versions of a game.

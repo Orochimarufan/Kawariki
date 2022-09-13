@@ -300,6 +300,8 @@ class Runtime(IRuntime):
             inject_scripts.append(self.base_path / 'injects/rpg-vars.js')
             if game.rpgmaker_release == "MV" and not game.is_rpgmaker_mv_legacy:
                 inject_scripts.append(self.base_path / 'injects/mv-decrypted-assets.js')
+            if game.rpgmaker_release == "MZ":
+                inject_scripts.append(self.base_path / 'injects/mz-decrypted-assets.js')
 
         # Patch Tyrano builder https://github.com/ShikemokuMK/tyranoscript/issues/87
         if game.tyrano_version is not None:
