@@ -9,6 +9,7 @@ from sys import stderr, stdout
 from tempfile import NamedTemporaryFile, TemporaryDirectory, mkdtemp
 from typing import (IO, Any, BinaryIO, Callable, List, Literal, MutableMapping,
                     NoReturn, Optional, Sequence, TextIO, Union, overload)
+from warnings import warn
 
 from .app import App
 
@@ -133,3 +134,12 @@ class ProcessLaunchInfo:
     def cleanup(self) -> None:
         for cleanup in reversed(self._cleanups):
             cleanup()
+        self._cleanups.clear()
+
+    def __del__(self):
+        if self._cleanups:
+            warn(f"Never cleaned up {self}", ResourceWarning)
+            try:
+                self.cleanup()
+            except:
+                pass
