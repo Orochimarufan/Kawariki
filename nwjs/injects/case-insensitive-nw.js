@@ -94,7 +94,7 @@
     loadCasemapFile(".").then(() => {
         chrome.webRequest.onBeforeRequest.addListener(details => {
             const url = new URL(details.url);
-            const relPath = url.pathname.substring(1);
+            const relPath = decodeURI(url.pathname.substring(1));
             if (!fs.existsSync(relPath)) {
                 if (casemap.record.hasOwnProperty(relPath)) {
                     const pathCached = casemap.record[relPath];
@@ -122,7 +122,7 @@
     });
 
     const casein = {loadCasemapFile, saveCasemapFile, findFilePathCISync, findFileNameCISync, get casemap() { return casemap; }};
-    if (exports !== undefined) {
+    if (typeof exports !== "undefined") {
         Object.assign(exports, casein);
     } else {
         window._casein = casein;
