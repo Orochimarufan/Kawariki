@@ -97,7 +97,7 @@ class Runtime(IRuntime):
         self.base_path = app.app_root / "nwjs"
         self.overlayns_bin = app.app_root / "overlayns-static"
         self.nwjs_dist_path = app.dist_path / "nwjs"
-        self.greenworks_dist_path = app.dist_path / "greenworks-nwjs"
+        self.greenworks_dist_path = app.dist_path / "nwjs-greenworks"
 
     # +-------------------------------------------------+
     # NW.js versions
