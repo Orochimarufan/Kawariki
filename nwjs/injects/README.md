@@ -38,6 +38,36 @@ Remap.add(map)      // Add multiple key mappings
 ```
 
 
+rpg-vars.js
+-----------
+
+Utilities for inspecting RPGMaker MV/MZ variables and switches.
+
+You can get a list of Variables (and/or switches) using these methods:
+```js
+RpgVariable.allVariables()
+RpgVariable.allSwitches()
+RpgVariable.findName(name)
+RpgVariable.findValue(x)
+```
+
+The returned is an array with additional methods for narrowing down the selectron:
+```js
+vars.narrow(f)          // By filter function
+vars.narrowChanged()    // Keep only recently changed variables
+vars.narrowValue(x)     // By current (possibly changed) value
+vars.slice()            // You can get a (shallow) copy using slice()
+```
+
+RpgVariable objects have the following methods:
+```js
+v.get()             // Get the current value
+v.set(x)            // Set a new value
+v.hasChanged()      // Check if it changed
+v.pollChanged()     // Check if it changed without resetting changed-ness
+```
+
+
 mv-decrypted-assets.js
 ----------------------
 
