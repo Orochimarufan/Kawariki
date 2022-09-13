@@ -280,15 +280,17 @@ class Runtime(IRuntime):
             proc.overlayns_bind(tempdir, ppath)
 
         # TODO: make configurable
-        bg_scripts = [self.base / 'injects/case-insensitive-nw.js']
+        bg_scripts = []
         inject_scripts = []
         conf = pkg.read_json()
 
-        if game.rpgmaker_release in ("MV","MZ"):
+        bg_scripts.append(self.base_path / 'injects/case-insensitive-nw.js')
+
+        if game.rpgmaker_release in ("MV", "MZ"):
             # Disable this if we can detect a rmmv  plugin that provides remapping?
-            inject_scripts.append(self.base / 'injects/remap-mv.js')
-        if game.rpgmaker_release == "MV":
-            inject_scripts.append(self.base / 'injects/mv-decrypted-assets.js')
+            inject_scripts.append(self.base_path / 'injects/remap-mv.js')
+            if game.rpgmaker_release == "MV" and not game.is_rpgmaker_mv_legacy:
+                inject_scripts.append(self.base_path / 'injects/mv-decrypted-assets.js')
 
         # Patch Tyrano builder https://github.com/ShikemokuMK/tyranoscript/issues/87
         if game.tyrano_version is not None:
