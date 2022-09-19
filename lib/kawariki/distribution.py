@@ -85,7 +85,7 @@ class Distribution(Generic[DI]):
         if "url" in self.info:
             if not self.format_url:
                 return self.info["url"]
-            url = self.info["url"].format(platform=self.platform)
+            url = self.info["url"].format(platform=self.platform, version=self.version_str)
         else:
             url = self.generate_url()
         self.__dict__["url"] = url
