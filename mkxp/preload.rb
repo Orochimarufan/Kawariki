@@ -71,8 +71,17 @@ module Preload
         end
 
         def read_system(system=System)
-            set :rgss_version, system::CONFIG["rgssVersion"].to_i
+            # TODO: Non mkxp-z variants
             set :mkxp_version, system::VERSION
+            set :mkxp_version_tuple, (system::VERSION.split ".").map{|d| d.to_i}
+
+            if (self[:mkxp_version_tuple] <=> [2, 4]) >= 0 then
+                mark :mkxpz_24
+                _config = CFG
+            else
+                _config = system::CONFIG
+            end
+            set :rgss_version, _config["rgssVersion"].to_i
 
             # FIXME: can this be reliably retrieved from MKXP if set to 0 in config?
             if self[:rgss_version] == 0 then
@@ -433,7 +442,7 @@ module Preload
         ctx = Context.new $RGSS_SCRIPTS
         ctx.read_system
         ctx.read_env
-        print "MKXP #{ctx[:mkxp_version]} RGSS #{ctx[:rgss_version]} (#{RgssVersionNames[ctx[:rgss_version]]})\n"
+        print "MKXP mkxp-z #{ctx[:mkxp_version]} RGSS #{ctx[:rgss_version]} (#{RgssVersionNames[ctx[:rgss_version]]})\n"
         # Patch Scripts
         dump_scripts ctx, :dump_scripts_raw
         patch_scripts ctx

@@ -5,6 +5,8 @@
  Date: Dec 22, 2014
 ------------------------------------------------------------------------------
  ** Change log
+ Sep 09, 2022
+  - Add mkxp-z 2.4 support
  Feb 13, 2022
   - MKXP(-Z) port by Taeyeon Mori
   - Replace any_key_pressed? implementation based on Win32API with
@@ -105,7 +107,7 @@ module TH
 #==============================================================================
 # ** Rest of the script
 #==============================================================================    
-    Button_Regex = /#{Regexp.escape(Button_Format)}\(\:(.*)\)/    
+    Button_Regex = /#{Regexp.escape(Button_Format)}\(\:(.*)\)/
   end
 end
 
@@ -117,10 +119,18 @@ module Input
   # Not every key should be checked
   Keys_To_Check = 4.upto(99) # SDL scancodes, most standard keys, no modifiers
   
-  def self.update
-    th_any_key_pressed_check_update
-    state = System.raw_key_states
-    @any_key_pressed = Keys_To_Check.any?{|key| state[key] != 0}
+  if Input.respond_to?(:raw_key_states) then # MKXP-Z 2.4 +
+    def self.update
+      th_any_key_pressed_check_update
+      state = Input.raw_key_states
+      @any_key_pressed = Keys_To_Check.any?{|key| state[key]}
+    end
+  else
+    def self.update
+      th_any_key_pressed_check_update
+      state = System.raw_key_states
+      @any_key_pressed = Keys_To_Check.any?{|key| state[key] != 0}
+    end
   end
   
   def self.any_key_pressed?
