@@ -13,6 +13,9 @@ module Preload
         Patch.new("HimeWorks' Simple Audio Encryption: Re-Implement with direct path detection")
             .imported?(:TH_SimpleAudioEncryption)
             .replace!("TH_SimpleAudioEncryption.rb"),
+        Patch.new("MOG_Anti_Lag: Fix visible type error")
+            .imported?(:mog_anti_lag)
+            .sub!("self.visible = @character.can_update", "self.visible = !!@character.can_update"),
         Patch.new("Super simple mouse script: Use mkxp mouse API")
             .imported?(nil)
             .include?("SUPER SIMPLE MOUSE SCRIPT")
