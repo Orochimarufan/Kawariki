@@ -77,13 +77,17 @@ For example, In some versions of Ubuntu/Debian it can be enabled with
 The overlayns binary works similarly to unshare(1) except it allows
 mounts to be specified on the commandline.
 
-Source: https://git.oro.sodimm.me/taeyeon/.files/src/branch/master/src/overlayns.cpp
+[Source code][overlayns-src]
 
 License
 -------
 
 The code itself (kawariki) is GPL3+. Generated files like launcher scripts shall be CC0.
 NW.js, Greenworks and Steamworks have their respective licenses.
+
+Some components, specifically patches to and ports of popular engine plugin scripts belong
+to their original authors and have their own license terms. If you are the original author
+of one of the included scripts and want it removed, please open an issue on GitHub.
 
 
 <!-- References -->
@@ -92,3 +96,5 @@ NW.js, Greenworks and Steamworks have their respective licenses.
 
 [nwjs]: https://nwjs.io/
 [mkxp-z]: https://roza-gb.gitbook.io/mkxp-z
+
+[overlayns-src]: https://git.oro.sodimm.me/taeyeon/.files/src/branch/master/src/overlayns.cpp

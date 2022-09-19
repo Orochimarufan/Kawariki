@@ -19,7 +19,7 @@ itself based on the original [mkxp][mkxp-github] by Ancurio.
 Currently, a [repackaged distribution][mkxp-z-repack] of the [official releases][mkxp-z-releases] are used.
 This is required mostly for ease of automatic downloading in Kawariki.
 
-Links: [mkxp-z GitLab][mkxp-z-gitlab]
+Links: [mkxp-z GitHub][mkxp-z-github]
 
 Configuration
 -------------
@@ -79,6 +79,9 @@ to allow it to run on Linux/MXKP-Z.
 Ports are modifications or re-implementations of third-party plugins to make
 them work on Linux/MKXP-Z. They are contained in the `ports/` directory.
 
+All ports retain their original license terms. If you are the original author
+of one of the included scripts and want it removed, please open an issue on GitHub.
+
 ### Patches
 
 A patch tries to identify a third-party plugin and then either modify it's code
@@ -117,9 +120,9 @@ The `libs/` directory contains a few libraries to support porting plugins.
 
 <!-- References -->
 [mkxp-z]: https://roza-gb.gitbook.io/mkxp-z
-[mkxp-z-config]: https://gitlab.com/mkxp-z/mkxp-z/-/blob/release/mkxp.json
-[mkxp-z-gitlab]: https://gitlab.com/mkxp-z/mkxp-z
-[mkxp-z-releases]: https://gitlab.com/mkxp-z/mkxp-z/-/releases
+[mkxp-z-config]: https://github.com/mkxp-z/mkxp-z/blob/release/mkxp.json
+[mkxp-z-github]: https://github.com/mkxp-z/mkxp-z
+[mkxp-z-releases]: https://github.com/mkxp-z/mkxp-z/releases
 [mkxp-z-repack]: https://github.com/Orochimarufan/Kawariki/releases/tag/mkxp-2.3.0-kk
 
 [mkxp-github]: https://github.com/Ancurio/mkxp
