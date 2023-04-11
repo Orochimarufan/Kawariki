@@ -81,7 +81,7 @@
                 if (dirParent) dirParent.closeSync();
                 return findFilePathCISync(pathTentative, pathElements, dir);
             } catch (e) {
-                const nameResolved = findFilePathCISync(pathParent, nameTentative, true, dirParent);
+                const nameResolved = findFileNameCISync(pathParent, nameTentative, true, dirParent);
                 if (nameResolved) {
                     console.log("Miscased directory name:", nameTentative, "in", pathParent, "is really", nameResolved);
                     return findFilePathCISync(path.join(pathParent, nameResolved), pathElements);
@@ -94,7 +94,7 @@
     loadCasemapFile(".").then(() => {
         chrome.webRequest.onBeforeRequest.addListener(details => {
             const url = new URL(details.url);
-            const relPath = decodeURI(url.pathname.substring(1));
+            const relPath = decodeURIComponent(url.pathname.substring(1));
             if (!fs.existsSync(relPath)) {
                 if (casemap.record.hasOwnProperty(relPath)) {
                     const pathCached = casemap.record[relPath];
