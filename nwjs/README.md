@@ -80,6 +80,9 @@ See the [injects readme][injects].
 This (currently) requires `overlayns-static` support
 (see the [main readme][readme]) to shadow the game's package.json.
 
+Custom user-scripts can be added to a game's root directory and will
+be injected when named `*.kawariki.js`
+
 #### Filesystem case-sensitivity
 
 A plugin to handle case-insensitive file lookups (`case-insensitive-nw.js`)

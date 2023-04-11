@@ -239,7 +239,8 @@ class Runtime(IRuntime):
                     }
                     """)
                 for script in scripts:
-                    f.write(f"addScript('file://{script}');\n")
+                    escaped = str(script).replace('"', r'\\"')
+                    f.write(f"addScript(\"file://{escaped}\");\n")
                 f.write("})();\n")
             else:
                 os.unlink(f.name)
@@ -287,7 +288,7 @@ class Runtime(IRuntime):
             proc.overlayns_bind(tempdir, ppath)
 
         # TODO: make configurable
-        bg_scripts = []
+        bg_scripts: list[Path] = []
         inject_scripts = []
         conf = pkg.read_json()
         code = []
@@ -302,6 +303,11 @@ class Runtime(IRuntime):
                 inject_scripts.append(self.base_path / 'injects/mv-decrypted-assets.js')
             if game.rpgmaker_release == "MZ":
                 inject_scripts.append(self.base_path / 'injects/mz-decrypted-assets.js')
+
+        # User scripts
+        for userscript in pkg.enclosing_directory.glob("*.kawariki.js"):
+            print(f"Found UserScript {userscript}")
+            inject_scripts.append(userscript.absolute())
 
         # Patch Tyrano builder https://github.com/ShikemokuMK/tyranoscript/issues/87
         if game.tyrano_version is not None:
