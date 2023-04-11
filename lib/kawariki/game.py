@@ -5,7 +5,7 @@
 from functools import cached_property
 from pathlib import Path
 from re import compile as re_compile
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 from .misc import DetectedProperty
 from .nwjs.package import PackageNw
@@ -37,6 +37,7 @@ class Game:
     # Engine detection
     # +-------------------------------------------------+
     RPGMAKER_INFO_RE    = re_compile(r'''Utils.RPGMAKER_(VERSION|NAME)\s*\=\s*["']([^"']+)["']''') # rpg_core.js/rmmz_core.js
+    RPGMAKER_LIBRARY_RE = re_compile(r'''RGSS(\d+\w)(?:\.dll)?$''') # Game.ini/Game/Library
     TYRANO_VERSION_RE   = re_compile(r'''(?<!\w)version:\s*(\d+),''') # tyrano/plugins/kag.js
 
     def detect(self):
@@ -44,6 +45,7 @@ class Game:
         # Ensure all attributes are initialized to None
         self.rpgmaker_release = None
         self.rpgmaker_version = None
+        self.rpgmaker_runtime = None
         self.tyrano_version = None
 
         # NW.js
@@ -65,10 +67,20 @@ class Game:
                         self.tyrano_version = m.group(1)
 
         # Detect legacy RPGMaker (RGSS)
-        # TODO: parse Game.ini for Library=
-        for dllname in self.root.rglob("RGSS*.dll"):
-            ver = dllname.name[4:].rsplit(".", 1)[0]
-            vt = tuple(int(d) if d.isdigit() else d for d in ver)
+        game_ini = self.root / "Game.ini" # TODO: perform search?
+        if game_ini.exists():
+            from configparser import ConfigParser
+            cfg = ConfigParser()
+            cfg.read(game_ini, "sjis") # TODO: encoding
+            self._detect_rgss_version(cfg["Game"]["Library"])
+            self.rpgmaker_runtime = cfg.get("Game", "RTP", fallback=None)
+        else:
+            for dllname in self.root.rglob("RGSS*.dll"):
+                self._detect_rgss_version(dllname.name)
+
+    def _detect_rgss_version(self, dllname):
+        if m := self.RPGMAKER_LIBRARY_RE.search(dllname):
+            vt = tuple(int(d) if d.isdigit() else d for d in m.group(1))
             if isinstance(vt[0], int) and vt[0] >= 1 and vt[0] <= 3:
                 self.rpgmaker_release = ("XP", "VX", "VXAce")[vt[0]-1]
                 self.rpgmaker_version = vt
@@ -77,7 +89,8 @@ class Game:
     # RPGMaker
     # +-------------------------------------------------+
     rpgmaker_release = DetectedProperty[Optional[str]](detect)
-    rpgmaker_version = DetectedProperty[Optional[Tuple[int, ...]]](detect)
+    rpgmaker_version = DetectedProperty[Optional[tuple[Union[int, str], ...]]](detect)
+    rpgmaker_runtime = DetectedProperty[Optional[str]](detect)
 
     @property
     def is_rpgmaker(self) -> bool:
@@ -92,7 +105,7 @@ class Game:
         return self.rpgmaker_release in ("MV", "MZ")
 
     @property
-    def is_rpgmaker_mv_legacy(self) -> "Optional[bool]":
+    def is_rpgmaker_mv_legacy(self) -> Optional[bool]:
         # Check for old RPGMaker MV version. Assume missing version means legacy
         return self.rpgmaker_release == "MV" and (self.rpgmaker_version is None or self.rpgmaker_version < (1, 6))
 
