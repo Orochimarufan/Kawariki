@@ -1,5 +1,25 @@
 [
     {
+        "alias": ["75", "75-nosdk"],
+        "version": [0, 75, 0],
+        "sdk": false
+    },
+    {
+        "alias": ["75", "75-sdk"],
+        "version": [0, 75, 0],
+        "sdk": true
+    },
+    {
+        "alias": ["70", "70-nosdk"],
+        "version": [0, 70, 1],
+        "sdk": false
+    },
+    {
+        "alias": ["70", "70-sdk"],
+        "version": [0, 70, 1],
+        "sdk": true
+    },
+    {
         "alias": ["66", "66-nosdk"],
         "version": [0, 66, 1],
         "sdk": false
