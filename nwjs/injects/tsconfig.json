@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+        "module": "None",
+        "sourceMap": true,
+        "target": "ES5",
+        "removeComments": true
+    },
+    "files": [
+        "rpg-remap.ts"
+    ]
+}

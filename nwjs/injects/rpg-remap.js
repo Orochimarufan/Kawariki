@@ -1,21 +1,8 @@
-// Key mapping. Assumes US-Keyboard
-// TODO: make configurable somehow
-// Ideally GUI?
-
-(function() {
-
-    // Typing helpers
-    /** @typedef {'tab'|'shift'|'control'|'escape'|'debug'|'pageup'|'pagedown'|'up'|'left'|'down'|'right'|'ok'} _Action */
-    /** @type {<T>(t: T) => T} */
-    var id = function(o) {
-        return o;
-    };
-    /** @type {<T>(et: { [K in keyof T]: number }) => et} */
+(function () {
+    var _a, _b, _c;
+    var id = function (o) { return o; };
     var _key = id;
-    /** @type {<T>(et: { [K in keyof T]: _Action }) => et} */
     var _action = id;
-
-    // Constants
     var key = _key({
         backspace: 8,
         tab: 9,
@@ -149,7 +136,6 @@
         bracket_close: 221,
         quote: 222,
     });
-
     var action = _action({
         tab: 'tab',
         shift: 'shift',
@@ -166,11 +152,6 @@
         confirm: 'ok',
         cancel: 'escape',
     });
-
-    /**
-     * Initial Keymap Customizations
-     * @type {{[P in keyof key]?: keyof action}}
-     */
     var map = {
         w: 'up',
         a: 'left',
@@ -178,88 +159,72 @@
         d: 'right',
         e: 'confirm',
         q: 'cancel',
+        r: 'pageup',
+        f: 'pagedown',
     };
-
     var options = {
         overrideBCE: false,
     };
-
-    // Code
-    /**
-     * @template K
-     * @template V
-     * @template RK
-     * @template RV
-     * @type {(obj: Record<K, V>, fn: (entry: [K, V]) => [RK, RV]) => Record<RK, RV>}
-     */
-    var mapEntries = Object.fromEntries !== undefined ?
-        function mapEntries(obj, fn) {
-            return Object.fromEntries(Object.entries(obj).map(fn));
-        } :
-        function mapEntries(obj, fn) {
-            /** @type {Record<RK, RV>} */
+    var _object = Object;
+    var Object_mapEntries = (_object.fromEntries !== undefined
+        ? function (obj, fn) {
+            return _object.fromEntries(_object.entries(obj).map(fn));
+        }
+        : function (obj, fn) {
             var newobj = {};
-            Object.keys(obj).forEach(function(k) {
-                entry = fn([k, obj[k]]);
+            Object.keys(obj).forEach(function (k) {
+                var entry = fn([k, obj[k]]);
                 newobj[entry[0]] = entry[1];
             });
             return newobj;
-        };
-
-    /** @type {Record<number, keyof key>} */
-    var keyByCode = mapEntries(key, function(kv) {
-        return [kv[1], kv[0]];
+        });
+    var Object_entries = (_a = _object.entries) !== null && _a !== void 0 ? _a : (function (obj) { return Object.keys(obj).map(function (k) { return [k, obj[k]]; }); });
+    var Object_fromEntries = (_b = _object.fromEntries) !== null && _b !== void 0 ? _b : (function (entries) {
+        var res = {};
+        for (var _i = 0, entries_1 = entries; _i < entries_1.length; _i++) {
+            var _a = entries_1[_i], k = _a[0], v = _a[1];
+            res[k] = v;
+        }
+        return res;
     });
-
-    /**
-     * Set a single key mapping
-     * @param {keyof key} keyname 
-     * @param {keyof action|string} act 
-     * @returns {void}
-     */
+    var Object_assign = (_c = _object.assign) !== null && _c !== void 0 ? _c : (function (target, source) {
+        Object.keys(source).forEach(function (key) { return target[key] = source[key]; });
+        return target;
+    });
+    var keyByCode = Object_mapEntries(key, function (_a) {
+        var key = _a[0], code = _a[1];
+        return [code, key];
+    });
+    var hook_vanilla = function (kas) { return kas.forEach(function (_a) {
+        var _b;
+        var keyname = _a[0], act = _a[1];
+        Input.keyMapper[key[keyname]] = (_b = action[act]) !== null && _b !== void 0 ? _b : act;
+    }); };
+    var hooks = [hook_vanilla];
+    function _apply(map) {
+        var kas = Object_entries(map);
+        hooks.forEach(function (hook) { return hook(kas); });
+    }
     function set(keyname, act) {
+        var _a;
         map[keyname] = act;
-        var ai = action[act];
-        Input.keyMapper[key[keyname]] = ai !== undefined ? ai : act;
+        _apply((_a = {}, _a[keyname] = act, _a));
     }
-
-    /**
-     * Get complete map including game/core definitions
-     * @returns {Record<keyof key, keyof action>}
-     */
     function get() {
-        return mapEntries(Input.keyMapper, function(entry) {
-            var k = keyByCode[entry[0]];
-            return [k !== undefined ? k : entry[0], entry[1]];
+        return Object_mapEntries(Input.keyMapper, function (_a) {
+            var code = _a[0], coreAction = _a[1];
+            var k = keyByCode[code];
+            return [k !== undefined ? k : code, coreAction];
         });
     }
-
-    /**
-     * Add new mappings
-     * @param {Record<keyof key, keyof action|string>} mappings
-     * @returns {void}
-     */
     function add(mappings) {
-        Object.keys(mappings).forEach(function(k) {
-            set(k, mappings[k]);
-        });
+        Object_assign(map, mappings);
+        _apply(mappings);
     }
-
-    /**
-     * Re-Apply custom mappings
-     * @returns {void}
-     */
     function apply() {
-        Object.keys(map).forEach(function(k) {
-            var an = map[k];
-            var ai = action[an];
-            Input.keyMapper[key[k]] = ai !== undefined ? ai : an;
-        });
+        _apply(map);
     }
-
-    // Yanfly ButtonCommonEvents support
     function setupYEP_BCE() {
-        /** @type {Record<string, _Action>} */
         var YEP_BCE_switch_map = {
             OK: 'ok',
             CANCEL: 'escape',
@@ -271,8 +236,6 @@
             RIGHT: 'right',
             DOWN: 'down'
         };
-
-        /** @type {{[K in keyof key]?: string}} */
         var YEP_BCE_key_map = {
             enter: 'enter',
             shift: 'keyShift',
@@ -302,29 +265,30 @@
             bracket_close: 'backBrack',
             quote: 'quote',
         };
-        ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].forEach(function(n) {
+        ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].forEach(function (n) {
             YEP_BCE_key_map["k" + n] = n;
             YEP_BCE_key_map["n" + n] = "num" + n;
         });
-        ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'].forEach(function(s) {
+        ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'].forEach(function (s) {
             YEP_BCE_key_map[s] = s;
         });
-
         var _switchButton = Input._switchButton;
-        Input._switchButton = function(button) {
+        Input._switchButton = function (button) {
             _switchButton.call(Input, button);
             if (options.overrideBCE) {
                 apply();
-            } else if (button === 'ALL') {
-                Object.keys(YEP_BCE_key_map).forEach(function(k) {
+            }
+            else if (button === 'ALL') {
+                Object.keys(YEP_BCE_key_map).forEach(function (k) {
                     var y = YEP_BCE_key_map[k];
                     if (Yanfly.Param.BCEList[y] !== 0)
                         Input.keyMapper[key[k]] = y;
                 });
-            } else {
-                var act = YEP_BCE_switch_map[button];
-                Object.keys(map).forEach(function(k) {
-                    if (map[k] === act) {
+            }
+            else {
+                var act_1 = YEP_BCE_switch_map[button];
+                Object.keys(map).forEach(function (k) {
+                    if (map[k] === act_1) {
                         var y = YEP_BCE_key_map[k];
                         if (Yanfly.Param.BCEList[y] !== 0)
                             Input.keyMapper[key[k]] = y;
@@ -332,49 +296,87 @@
                 });
             }
         };
-
         var _revertButton = Input._revertButton;
-        Input._revertButton = function(button) {
+        Input._revertButton = function (button) {
             _revertButton.call(Input, button);
             if (button == "ALL") {
                 apply();
-            } else {
-                var act = YEP_BCE_switch_map[button];
-                var xact = action[act];
-                Object.keys(map).forEach(function(k) {
-                    if (map[k] === act) {
-                        Input.keyMapper[key[k]] = xact;
-                    }
+            }
+            else {
+                var act_2 = YEP_BCE_switch_map[button];
+                var xact_1 = action[act_2];
+                Object.keys(map).forEach(function (k) {
+                    if (map[k] === act_2)
+                        Input.keyMapper[key[k]] = xact_1;
                 });
             }
-        }
-    };
-
-    const initialKeyMap = {};
-
-    window.addEventListener("load", function() {
-        Object.freeze(Object.assign(initialKeyMap, get()));
-        apply(map);
+        };
+    }
+    function setupQInput() {
+        var qinput_keys = QInput.keys;
+        var qinput_key_map = Object_mapEntries(key, function (_a) {
+            var rkey = _a[0], code = _a[1];
+            return [rkey, "#" + qinput_keys[code]];
+        });
+        var hook_qinput = function (kas) {
+            var qinput_kas = kas.map(function (_a) {
+                var _b, _c;
+                var key = _a[0], act = _a[1];
+                return [(_b = qinput_key_map[key]) !== null && _b !== void 0 ? _b : key, (_c = action[act]) !== null && _c !== void 0 ? _c : act];
+            });
+            var remapped = Object_fromEntries(qinput_kas);
+            var collected = {};
+            qinput_kas.forEach(function (_a) {
+                var _b;
+                var key = _a[0], act = _a[1];
+                var qa = (_b = collected[act]) !== null && _b !== void 0 ? _b : [];
+                qa.push(key);
+                collected[act] = qa;
+            });
+            var qkeys = ConfigManager.keys;
+            Object.keys(qkeys).forEach(function (qa) {
+                var _a;
+                var keys = (_a = collected[qa]) !== null && _a !== void 0 ? _a : [];
+                qkeys[qa].forEach(function (key) {
+                    if (!Object.prototype.hasOwnProperty.call(remapped, key))
+                        keys.push(key);
+                });
+                qkeys[qa] = keys;
+            });
+        };
+        hooks.push(hook_qinput);
+    }
+    var initialKeyMap = {};
+    window.addEventListener("load", function () {
+        Object.freeze(Object_assign(initialKeyMap, get()));
+        apply();
         console.log("RPG MV/MZ Remap loaded.", map);
-        if (typeof Imported !== "undefined" && Imported.YEP_ButtonCommonEvents !== undefined) {
-            setupYEP_BCE();
+        if (typeof Imported !== "undefined") {
+            if (Imported.YEP_ButtonCommonEvents !== undefined) {
+                setupYEP_BCE();
+            }
+            if (Imported.QInput !== undefined) {
+                setupQInput();
+            }
         }
     });
-
     window.Remap = Object.freeze({
         initial: initialKeyMap,
         key: key,
         action: action,
         options: options,
-        map: new Proxy(map, {
-            set: function(target, p, value, receiver) {
-                set(p, value);
-            }
-        }),
+        map: window.Proxy !== undefined
+            ? new window.Proxy(map, {
+                set: function (target, p, value, receiver) {
+                    set(p, value);
+                    return true;
+                }
+            })
+            : undefined,
         get: get,
         set: set,
         add: add,
         apply: apply,
     });
-
 })();
+//# sourceMappingURL=rpg-remap.js.map
