@@ -63,6 +63,12 @@ RPGMaker editions based on RGSS are:
 
 [README][rt-mkxp]
 
+### Godot
+
+There is also experimental support for running [Godot][godot] games.
+
+[README][rt-godot]
+
 
 overlayns-static
 ----------------
@@ -93,8 +99,10 @@ of one of the included scripts and want it removed, please open an issue on GitH
 <!-- References -->
 [rt-nwjs]: nwjs/README.md
 [rt-mkxp]: mkxp/README.md
+[rt-godot]: godot/README.md
 
 [nwjs]: https://nwjs.io/
 [mkxp-z]: https://roza-gb.gitbook.io/mkxp-z
+[godot]: https://godotengine.org/
 
 [overlayns-src]: https://git.oro.sodimm.me/taeyeon/.files/src/branch/master/src/overlayns.cpp

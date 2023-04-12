@@ -187,6 +187,9 @@ def main(app, argv) -> int:
     elif game.is_rpgmaker_rgss:
         from .mkxp.runtime import Runtime as MkxpRuntime
         runtime = MkxpRuntime(app)
+    elif game.is_godot:
+        from .godot.runtime import Runtime as GodotRuntime
+        runtime = GodotRuntime(app)
     else:
         app.show_error(f"Game is not handled by Kawariki: {game_root}")
         return 22

@@ -113,3 +113,21 @@ class Game:
     # Tyrano Script
     # +-------------------------------------------------+
     tyrano_version = DetectedProperty[Optional[int]](detect)
+
+    # +-------------------------------------------------+
+    # Godot
+    # +-------------------------------------------------+
+    @cached_property
+    def godot_pack(self) -> Optional[Path]:
+        # TODO: support merged exe, heuristics?
+        if self.binary_name_hint is None:
+            return None
+        exe = self.root / self.binary_name_hint
+        pck = exe.with_suffix(".pck")
+        if pck.exists():
+            return pck
+        return None
+    
+    @property
+    def is_godot(self) -> bool:
+        return self.godot_pack is not None

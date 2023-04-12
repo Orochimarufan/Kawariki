@@ -1,0 +1,15 @@
+{
+    "name": "godot",
+    "platforms": ["linux-x86_64"],
+    "default": {
+        "strip_leading": false
+    },
+    "versions": [
+        {
+            "version": [3, 5, 2],
+            "platforms": ["linux-x86_64"],
+            "url": "https://github.com/godotengine/godot/releases/download/3.5.2-stable/Godot_v3.5.2-stable_x11.64.zip",
+            "binary": "Godot_v3.5.2-stable_x11.64"
+        }
+    ]
+}
