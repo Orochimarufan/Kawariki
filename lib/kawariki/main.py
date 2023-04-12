@@ -42,9 +42,13 @@ def add_launcher(app: App, game: Game, args) -> int:
     prefix = shlex.split(args.prefix) if args.prefix else []
     
     path = game.root / args.launcher
-    with open(path, "w") as f:
-        f.write(format_launcher_script(*prefix, selfpath, "run", "--", game.binary_name_hint if game.binary_name_hint else "."))
-    os.chmod(path, 0o755)
+    try:
+        with path.open("x") as f:
+            f.write(format_launcher_script(*prefix, selfpath, "run", "--", game.binary_name_hint if game.binary_name_hint else "."))
+    except FileExistsError:
+        app.show_error(f"File already exists. Please choose a different name for the Kawariki launcher or delete it first:\n{path}")
+        return 1
+    path.chmod(0o755)
     
     print(f"Created launcher '{path}'")
     
