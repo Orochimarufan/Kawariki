@@ -16,6 +16,15 @@ T = TypeVar("T")
 def version_str(ver: Sequence[Union[str, int]]):
     return '.'.join(map(str, ver))
 
+def size_str(size: int):
+    desc = ["B", "kiB", "MiB", "GiB", "TiB"]
+    expo = 0
+    xsize: float = size
+    while xsize >= 1000:
+        xsize /= 1024
+        expo += 1
+    return f"{xsize:.2f} {desc[expo]}"
+
 
 def copy_unlink(src, dst):
     # Unlink first to be able to overwrite write-protected files
