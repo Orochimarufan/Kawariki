@@ -73,3 +73,9 @@ mv-decrypted-assets.js, mz-decrypted-assets.js
 
 These scripts modify RPGMaker MV/MZ games to be able to load decrypted assets even when System.json indicates they should be encrypted.
 This is useful e.g. when wanting to mod a game without having to encrypt the modded assets or for sharing assets on disk between different games and/or different versions of a game.
+
+They must be enabled using the environment variable `KAWARIKI_NWJS_RPG_DECRYPTED_ASSETS=1`
+
+> ⓘ Fully decrypted games can run without this given the appropriate modifications to `(www/)data/System.json`
+>
+> Also note that this deals only with standard RPGMaker MV/MZ asset encryption (.rpgmvo, .ogg_, etc), not any additional custom protections a game might implement.

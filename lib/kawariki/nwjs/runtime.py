@@ -299,10 +299,13 @@ class Runtime(IRuntime):
             # Disable this if we can detect a rmmv  plugin that provides remapping?
             inject_scripts.append(self.base_path / 'injects/rpg-remap.js')
             inject_scripts.append(self.base_path / 'injects/rpg-vars.js')
-            if game.rpgmaker_release == "MV" and not game.is_rpgmaker_mv_legacy:
-                inject_scripts.append(self.base_path / 'injects/mv-decrypted-assets.js')
-            if game.rpgmaker_release == "MZ":
-                inject_scripts.append(self.base_path / 'injects/mz-decrypted-assets.js')
+            if os.environ.get("KAWARIKI_NWJS_RPG_DECRYPTED_ASSETS"):
+                if game.rpgmaker_release == "MV" and not game.is_rpgmaker_mv_legacy:
+                    inject_scripts.append(self.base_path / 'injects/mv-decrypted-assets.js')
+                elif game.rpgmaker_release == "MZ":
+                    inject_scripts.append(self.base_path / 'injects/mz-decrypted-assets.js')
+                else:
+                    self.app.show_warn("RPGMaker version isn't supported for KAWARIKI_NWJS_RPG_DECRYPTED_ASSETS")
 
         # User scripts
         for userscript in pkg.enclosing_directory.glob("*.kawariki.js"):
