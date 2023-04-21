@@ -26,7 +26,7 @@
          * @param {boolean|undefined} hasEncrypted Decrypter.hasEncrypted* constant
          * @returns {0|1|2} One of NEVER, ALWAYS or MAYBE
          */
-        _need_decrypt(url, hasEncrypted) {
+        need_decrypt(url, hasEncrypted) {
             // Are there even encrypted items
             if (hasEncrypted === false)
                 return NEVER;
@@ -43,11 +43,6 @@
                 return ALWAYS;
             // Brute-force-try both, could be case mismatch
             return MAYBE;
-        },
-        need_decrypt(url, he) {
-            const r = this._need_decrypt(url, he);
-            if (r != NEVER) console.log(url, he, r);
-            return r;
         },
         /**
          * Request a possibly encrypted resource as arraybuffer
