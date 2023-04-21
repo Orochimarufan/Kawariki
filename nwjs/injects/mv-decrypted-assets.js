@@ -153,28 +153,37 @@
             };
 
             // Setup plugin patching
+            const _loadScript = PluginManager.loadScript;
             /**
              * @param {string} name
              */
             PluginManager.loadScript = function(name) {
-                //if (/YEP_X_CoreUpdatesOpt/.test(name)) return;
-                var url = this._path + name;
-                var script = document.createElement('script');
-                script.type = 'text/javascript';
-                script.src = url;
-                script.async = false;
-                script.onerror = this.onError.bind(this);
-                script._url = url;
-                // Patch
-                let from = url.lastIndexOf('/');
+                // Check if we have special support for plugin
+                let from = name.lastIndexOf('/');
                 from = from >= 0 ? from+1 : 0;
-                let to = url.lastIndexOf('.');
-                to = to >= from ? to : url.length;
-                const basename = url.substring(from, to);
-                if (mda.plugins.hasOwnProperty(basename)) {
-                    script.addEventListener("load", mda.plugins[basename].bind(script, mda));
+                let to = name.lastIndexOf('.');
+                to = to >= from ? to : name.length;
+                const basename = name.substring(from, to);
+                const hook = mda.plugins[basename];
+                // Make sure to still call original method!
+                // Some games patch loadScript for custom script decryption
+                if (hook) {
+                    // Monkey-patch createElement to attach listener to new script element
+                    const _createElement = document.createElement;
+                    document.createElement = function(tagName, options) {
+                        const el = _createElement.call(document, tagName, options);
+                        if (tagName === 'script') {
+                            el.addEventListener("load", hook.bind(el, mda));
+                        }
+                        return el;
+                    }
+                    _loadScript.call(PluginManager, name);
+                    // restore createElement
+                    document.createElement = _createElement;
+                } else {
+                    // Nothing to do
+                    _loadScript.call(PluginManager, name);
                 }
-                document.body.appendChild(script);
             };
         },
         /** @type {Record<string, (mda: typeof MDA) => void>} */
