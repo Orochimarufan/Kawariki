@@ -13,6 +13,9 @@ Provides a WebRequest handler that tries to look up missing files case-insensiti
 
 A file `case-mismatches.json` will be created in the app package directory when the first request with erroneous path casing is made by the app. It is used to cache lookup results and is useful for reporting the detected issues to the developer.
 
+### Node filesystem APIs
+
+Additionally, the Node.js filesystem APIs (fs module) can be patched to do case-insensitive lookups. This is enabled through the `KAWARIKI_NWJS_CIFS=1` environment variable.
 
 rpg-remap.js
 ------------

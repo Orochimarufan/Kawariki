@@ -98,6 +98,7 @@ Configuration
 - `KAWARIKI_NO_UNPACK=1` Don't allow unpacking packaged apps to /tmp
 - `KAWARIKI_NO_OVERLAYNS=1` Disallow usage of overlayns-static
 - `KAWARIKI_NWJS_DEVTOOLS=1` Try to open DevTools on startup
+- `KAWARIKI_NWJS_CIFS=1` Replace Node.js filesystem interfaces with case-insensitive versions
 
 ### versions.json
 
