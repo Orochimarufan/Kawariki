@@ -324,6 +324,10 @@ class Runtime(IRuntime):
 
         if os.environ.get("KAWARIKI_NWJS_DEVTOOLS"):
             code.append("""(typeof nw !== "undefined"? nw : require("nw.gui")).Window.get().showDevTools()""")
+        
+        if os.environ.get("KAWARIKI_NWJS_INJECT_BG"):
+            inject_scripts = [*bg_scripts, *inject_scripts]
+            bg_scripts = []
 
         # Patch package json
         if nwjs.version >= (0, 19):
