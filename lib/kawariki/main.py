@@ -32,6 +32,7 @@ import sys
 from .misc import version_str, hardlink_or_copy
 from .app import App, IRuntime
 from .game import Game
+from .quirks import STEAM_QUIRKS
 
 
 # Common verb entrypoints
@@ -182,6 +183,13 @@ def main(app, argv) -> int:
 
     if args.action == "launcher":
         return add_launcher(app, game, args)
+    
+    # TODO: Do this better. It really shouldn't mess with the global environ
+    quirk = STEAM_QUIRKS.get(game.steam_appid, None)
+    if quirk is not None:
+        print(f"Using quirks for Steam appid: {game.steam_appid}")
+        if 'environ' in quirk:
+            os.environ.update(quirk['environ'])
     
     # Check game type
     runtime: IRuntime
