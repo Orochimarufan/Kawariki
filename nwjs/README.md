@@ -100,6 +100,7 @@ Configuration
 - `KAWARIKI_NWJS_DEVTOOLS=1` Try to open DevTools on startup
 - `KAWARIKI_NWJS_CIFS=1` Replace Node.js filesystem interfaces with case-insensitive versions
 - `KAWARIKI_NWJS_INJECT_BG=1` Inject all scripts into the content instead of the background context (Useful for debugging via DevTools)
+- `KAWARIKI_NWJS_IGNORE_LEGACY_MV=1` Don't try to use old Nw.js with RPGMaker MV versions older than 1.6
 
 ### versions.json
 
