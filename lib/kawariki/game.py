@@ -3,6 +3,7 @@
 # :---------------------------------------------------------------------------:
 
 from functools import cached_property
+from os import environ
 from pathlib import Path
 from re import compile as re_compile
 from typing import Optional, Tuple, Union
@@ -131,3 +132,15 @@ class Game:
     @property
     def is_godot(self) -> bool:
         return self.godot_pack is not None
+    
+    # +-------------------------------------------------+
+    # Steam meta-information
+    # +-------------------------------------------------+
+    @cached_property
+    def steam_appid(self) -> Optional[str]:
+        if "SteamAppId" in environ:
+            return environ["SteamAppId"]
+        appid_txt = self.root / "steam_appid.txt"
+        if appid_txt.is_file():
+            return appid_txt.read_text("ascii")
+        return None
