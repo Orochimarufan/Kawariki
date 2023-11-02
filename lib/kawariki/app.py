@@ -66,6 +66,9 @@ class App:
     def show_progress(self, text, progress=0, maximum=100, title="Kawariki Runtime"):
         if self.gui and hasattr(self.gui, "show_progress"):
             return self.gui.show_progress(title, text, progress, maximum)
+        elif stderr.isatty():
+            from .ui.tty import TtyProgress
+            return TtyProgress(stderr, title, text, progress, maximum)
         else:
             return DummyProgressUi(title, text, progress, maximum)
 
