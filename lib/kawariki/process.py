@@ -14,8 +14,13 @@ from typing import (IO, Any, BinaryIO, Callable, List, Literal,
 from warnings import warn
 
 from .app import App
+from .utils.exceptiongroup import ExceptionGroup, format_exception
 
 PathLike = Union[str, PurePath]
+
+
+class CleanupErrors(ExceptionGroup):
+    pass
 
 
 class ProcessEnvironment:
@@ -114,10 +119,17 @@ class ProcessEnvironment:
         self._cleanups.append(cb)
 
     def cleanup(self) -> None:
+        """ Run all cleanup operations """
+        errs = []
         for cleanup in reversed(self._cleanups):
-            cleanup()
+            try:
+                cleanup()
+            except Exception as e:
+                errs.append(e)
         self._cleanups.clear()
-    
+        if errs:
+            raise CleanupErrors("Errors cleaning up process environment", errs)
+
     def __enter__(self):
         return self
     
@@ -126,11 +138,11 @@ class ProcessEnvironment:
 
     def __del__(self):
         if self._cleanups:
-            warn(f"Never cleaned up {self}", ResourceWarning)
+            warn(f"Never cleaned up {self}", ResourceWarning, stacklevel=0)
             try:
                 self.cleanup()
-            except:
-                pass
+            except Exception as e:
+                print(f"Cleanup errors:\n{format_exception(e)}")
 
 
 # TODO: Split out completely and make environment reusable
