@@ -25,10 +25,6 @@ class MKXP(Distribution):
     def variant(self) -> str:
         return self.info["variant"]
 
-    @property
-    def slug(self) -> str:
-        return f"{self.variant}-{self.version_str}-{self.platform}"
-
 
 class Runtime(IRuntime):
     app: App

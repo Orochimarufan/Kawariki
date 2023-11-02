@@ -1,26 +1,35 @@
-[
-    {
-        "nwjs": [[0, 70, 1], [0, 71], [0, 72], [0, 73], [0, 74], [0, 75]],
-        "version": [1, 5, 0],
-        "platforms": ["linux-x64"],
-        "url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/greenworks-nwjs-0.70.1-linux-x64.tar.xz"
+{
+    "$schema": "../versions.schema.json",
+    "format": 2,
+    "name": "greenworks",
+    "platforms": {
+        "linux-x86_64": "linux-x64"
     },
-    {
-        "nwjs": [[0, 66]],
-        "version": [1, 5, 0],
-        "platforms": ["linux-x64"],
-        "url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/greenworks-nwjs-0.66.x-linux-x64.tar.xz"
+    "common": {
+        "name": "Greenworks {version!v} for NW.js {nwjs[0]!v} ({platform})",
+        "slug": "greenworks-{version!v}-nwjs-{nwjs[0]!v}-{platform}",
+        "platforms": ["linux-x64"]
     },
-    {
-        "nwjs": [[0, 58]],
-        "version": [1, 5, 0],
-        "platforms": ["linux-x64"],
-        "url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/greenworks-nwjs-0.58.x-linux-x64.tar.xz"
-    },
-    {
-        "nwjs": [[0, 54]],
-        "version": [1, 5, 0],
-        "platforms": ["linux-x64"],
-        "url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/greenworks-nwjs-0.54.x-linux-x64.tar.xz"
-    }
-]
+    "versions": [
+        {
+            "nwjs": [[0, 70, 1], [0, 71], [0, 72], [0, 73], [0, 74], [0, 75]],
+            "version": [1, 5, 0],
+            "url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/greenworks-nwjs-0.70.1-linux-x64.tar.xz"
+        },
+        {
+            "nwjs": [[0, 66]],
+            "version": [1, 5, 0],
+            "url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/greenworks-nwjs-0.66.x-linux-x64.tar.xz"
+        },
+        {
+            "nwjs": [[0, 58]],
+            "version": [1, 5, 0],
+            "url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/greenworks-nwjs-0.58.x-linux-x64.tar.xz"
+        },
+        {
+            "nwjs": [[0, 54]],
+            "version": [1, 5, 0],
+            "url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/greenworks-nwjs-0.54.x-linux-x64.tar.xz"
+        }
+    ]
+}

@@ -1,0 +1,153 @@
+{
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "$id": "https://github.com/Orochimarufan/Kawariki/versions.schema.json",
+    "title": "Distributions",
+    "description": "Describes different distributions/versions of an engine component",
+    "definitions": {
+        "interpolated_string": {
+            "description": "String interpolated with adjacent values using python {key} syntax",
+            "type": "string"
+        },
+        "pattern_string": {
+            "description": "Interpolated String that can be selected from multiple options",
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/interpolated_string"
+                },
+                {
+                    "type":"object",
+                    "patternProperties": {
+                        "[^=]+!?=.+": {
+                            "$ref": "#/definitions/pattern_string"
+                        },
+                        "": {
+                            "$ref": "#/definitions/pattern_string"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "minProperties": 1
+                }
+            ]
+        },
+        "value": {
+            "description": "Value that can be selected from multiple options",
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/interpolated_string"
+                },
+                {
+                    "type": "object",
+                    "patternProperties": {
+                        "[^=]+!?=.+": {
+                            "$ref": "#/definitions/value"
+                        },
+                        "": {
+                            "$ref": "#/definitions/value"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "minProperties": 1
+                },
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "number"
+                },
+                {
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/value"}
+                }
+            ]
+        },
+        "info": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "Human-readable name of the distribution",
+                    "$ref": "#/definitions/interpolated_string"
+                },
+                "alias": {
+                    "description": "Names a distribution may be referred to by for selecting it explicitly",
+                    "type":"array",
+                    "items": {"$ref": "#/definitions/interpolated_string"}
+                },
+                "version": {
+                    "description": "The version number as array of integers. Trailing element may be a string",
+                    "type": "array",
+                    "items": {
+                        "oneOf": [
+                            {"type": "integer"},
+                            {"type": "string"}
+                        ]
+                    },
+                    "minItems": 2
+                },
+                "platforms": {
+                    "description": "The list of supported platform strings",
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1
+                },
+                "slug": {
+                    "description": "A slug to use when generating filesystem paths. Also an implicit unique alias value",
+                    "$ref": "#/definitions/pattern_string"
+                },
+                "binary": {
+                    "description": "The binary filename relative to the extracted distribution",
+                    "$ref": "#/definitions/pattern_string"
+                },
+                "url": {
+                    "description": "The URL to download the distribution from",
+                    "$ref": "#/definitions/pattern_string"
+                },
+                "strip_leading": {
+                    "description": "Strip the leading component from the extracted files",
+                    "oneOf": [
+                        {"type": "boolean"},
+                        {"type": "string"}
+                    ]
+                }
+            },
+            "additionalProperties": {
+                "$ref": "#/definitions/value"
+            }
+        }
+    },
+    "type":"object",
+    "properties": {
+        "$schema": {
+            "type":"string"
+        },
+        "format": {
+            "type": "integer",
+            "description": "Format version number, currently 2"
+        },
+        "name": {
+            "description": "Component name",
+            "type": "string"
+        },
+        "platforms": {
+            "type": "object",
+            "description": "Mapping Kawariki platform strings to distribution platform strings, if necessary",
+            "additionalProperties": {
+                "type": "string"
+            },
+            "minProperties": 1
+        },
+        "common": {
+            "description": "Properties common to all versions",
+            "$ref": "#/definitions/info"
+        },
+        "versions": {
+            "description": "The available versions of the component",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/info"
+            },
+            "minItems": 1
+        }
+    },
+    "required": ["format", "name", "versions"],
+    "additionalProperties": false
+}

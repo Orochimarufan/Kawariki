@@ -4,7 +4,7 @@ from functools import cached_property
 from pathlib import Path
 from shutil import copytree
 from tempfile import NamedTemporaryFile
-from typing import Literal, Optional, Sequence, Tuple, TypedDict, Union
+from typing import Dict, List, Literal, Optional, Sequence, Tuple, Union
 
 from ..app import App, IRuntime
 from ..distribution import Distribution, DistributionInfo
@@ -24,21 +24,22 @@ class GreenworksDistInfo(DistributionInfo):
 class NWjs(Distribution):
     info: NWjsDistributionInfo
 
-    strip_leading = "nwjs-"
-    fill_platform = True
-    default_binary_name = "nw"
-
-    @cached_property
-    def slug(self) -> str:
-        return f"nwjs-{version_str(self.version)}-{'sdk' if self.is_sdk else 'nosdk'}-{self.platform}"
-
     @property
     def is_sdk(self) -> bool:
         return self.info.get("sdk", False)
 
-    def generate_url(self) -> str:
-        version = self.version_str
-        return f"https://dl.nwjs.io/v{version}/nwjs-{'sdk-' if self.is_sdk else ''}v{version}-{self.platform}.tar.gz"
+    @classmethod
+    def load_variants(cls, info: NWjsDistributionInfo, dist_path: Path, platform=None, platform_map: Optional[Dict[str, str]] = None, defaults: Optional[NWjsDistributionInfo] = None):
+        if info.get('sdk', defaults.get('sdk', None)) == "synthesize":
+            alias: List[str] = info.get('alias', [])
+            info_sdk = info.copy()
+            info_sdk.update(sdk=True, alias=[*alias, *(f"{a}-sdk" for a in alias)])
+            info_nosdk = info.copy()
+            info_nosdk.update(sdk=False, alias=[*alias, *(f"{a}-nosdk" for a in alias)])
+            infos = (info_nosdk, info_sdk)
+        else:
+            infos = (info,)
+        return (cls(info, dist_path, platform, platform_map, defaults) for info in infos)
 
 
 class GreenworksDistribution(Distribution):
@@ -47,10 +48,6 @@ class GreenworksDistribution(Distribution):
     @property
     def nwjs_version(self) -> Tuple[int, ...]:
         return tuple(self.info["nwjs"][0])
-
-    @cached_property
-    def slug(self) -> str:
-        return f"greenworks-{self.version_str}-nwjs-{version_str(self.nwjs_version)}-{self.platform}"
 
     def is_compatible(self, nwjs: NWjs) -> bool:
         for ver in self.info["nwjs"]:
@@ -74,15 +71,8 @@ class Runtime(IRuntime):
     nwjs_dist_path: Path
     greenworks_dist_path: Path
 
-    nwjs_platform_map = {
-        "linux-x86_64": "linux-x64",
-        "linux-i386": "linux-ia32",
-        "linux-i686": "linux-ia32"
-    }
-
     def __init__(self, app: App):
         self.app = app
-        self.platform = self.nwjs_platform_map[app.platform]
         self.base_path = app.app_root / "nwjs"
         self.overlayns_bin = app.app_root / "overlayns-static"
         self.nwjs_dist_path = app.dist_path / "nwjs"
@@ -93,7 +83,7 @@ class Runtime(IRuntime):
     # +-------------------------------------------------+
     @cached_property
     def nwjs_versions(self) -> Sequence[NWjs]:
-        return NWjs.load_json(self.base_path / "versions.json", self.nwjs_dist_path, self.platform)
+        return NWjs.load_json(self.base_path / "versions.json", self.nwjs_dist_path, self.app.platform)
 
     def get_nwjs(self, version_name: str) -> Optional[NWjs]:
         for ver in self.nwjs_versions:
@@ -146,11 +136,11 @@ class Runtime(IRuntime):
                     if nwjs.version >= (0, 13):
                         self.app.show_warn(f"Overriding NW.js version for legacy RMMV (before 1.6) game.\nSelected version is {nwjs.version}, but legacy RMMV may only work correctly with NW.js up to 0.12.x")
                 else:
-                    print("Using NW.js suitable for legacy RMMV (before 1.6)")
+                    print("Trying to use NW.js suitable for legacy RMMV (before 1.6)")
                     nwjs = self.get_nwjs_version(max=(0, 12, 99))
                     if nwjs is None:
-                        self.app.show_error("No NW.js version suitable for RMMV before 1.6 found (requires NW.js older than 0.13)\nYou can force an incompatible version using --nwjs, but YMMV")
-                        raise ErrorCode(5)
+                        self.app.show_warn("No NW.js version suitable for RMMV before 1.6 found (requires NW.js older than 0.13)\nNow trying to run the game with modern NW.js, but YMMV")
+                        #raise ErrorCode(5)
         elif game.tyrano_version:
             print(f"Looks like Tyrano builder v{game.tyrano_version}")
 
