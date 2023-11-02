@@ -106,37 +106,17 @@ class Runtime(IRuntime):
         # TODO: add explicit config for RTP. Is it possible to auto-detect games that need it?
         return json.dumps(config)
 
-    def overlay_file(self, proc: ProcessLaunchInfo, path: Path, content: str, no_overlayns: bool):
-        """ Replace the content of a file for the process while keeping the original version.
-            Either by overlaying using overlayns or by renaming and restoring after process exits.
-            Note that the latter option isn't re-entrant.
-            Cannot overlay on top of non-existant file using mounts however. Copying the whole
-            containing directory to /tmp to avoid changing the original seems very impractical. """
-        if path.exists():
-            if not no_overlayns:
-                with proc.temp_file(prefix=path.stem, suffix=path.suffix) as tf:
-                    tf.write(content)
-                    proc.overlayns_bind(tf.name, path)
-                    return
-            backup = path.parent / f"{path.stem}.kawariki-backup{path.suffix}"
-            if backup.exists():
-                raise FileExistsError(backup)
-            path.rename(backup)
-            proc.at_cleanup(lambda: backup.rename(path))
-        else:
-            proc.at_cleanup(path.unlink)
-        with open(path, "w") as f:
-            f.write(content)
-
     def run(self, game: Game, arguments: Sequence[str], *, no_overlayns=False, **kwds):
         mkxp = self.get_mkxp_version()
 
-        proc = ProcessLaunchInfo(self.app, [mkxp.binary])
+        proc = ProcessLaunchInfo(self.app, [mkxp.binary], no_overlayns=no_overlayns)
         proc.environ["SRCDIR"] = str(game.root)
         proc.environ["LD_LIBRARY_PATH"] = mkxp.path
         proc.workingdir = game.root
 
-        self.overlay_file(proc, game.root / "mkxp.json", self.make_mkxp_config(mkxp, game), no_overlayns)
+        conf = self.make_mkxp_config(mkxp, game)
+        with proc.replace_file(game.root / "mkxp.json") as f:
+            f.write(conf)
 
         proc.exec()
 

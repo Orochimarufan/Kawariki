@@ -1,11 +1,8 @@
 import json
 import os
-import shlex
-import subprocess
-from contextlib import contextmanager
 from functools import cached_property
 from pathlib import Path
-from shutil import copyfileobj, copytree
+from shutil import copytree
 from tempfile import NamedTemporaryFile
 from typing import Literal, Optional, Sequence, Tuple, TypedDict, Union
 
@@ -62,20 +59,12 @@ class GreenworksDistribution(Distribution):
         return False
 
 
-@contextmanager
-def overlay_or_clobber(pkg: PackageNw, proc: ProcessLaunchInfo, filename: str, mode="w"):
+def overlay_or_clobber(pkg: PackageNw, proc: ProcessLaunchInfo, filename: str, mode: Literal["a", "w"]="w"):
     path = pkg.path / filename
     if pkg.may_clobber:
-        f = path.open(mode)
-        yield f
-        f.close()
+        return path.open(mode)
     else:
-        with proc.temp_file(prefix=f"{path.stem}-", suffix=path.suffix) as f:
-            if mode == "a":
-                with path.open("r") as fs:
-                    copyfileobj(fs, f)
-            yield f
-            proc.overlayns_bind(f.name, path)
+        return proc.replace_file(path, mode)
 
 
 class Runtime(IRuntime):
@@ -253,15 +242,8 @@ class Runtime(IRuntime):
             proc.at_cleanup(lambda: os.unlink(f.name))
             return name
 
-    def overlay_files(self, game: Game, pkg: PackageNw, nwjs: NWjs, proc: ProcessLaunchInfo):
-        # Use some namespace magic to leave the game install clean
-        # This requires unprivileged user namespaces to be enabled in the kernel
-        # In some versions of Ubuntu/Debian it can be enabled with 'sysctl -w kernel.unprivileged_userns_clone=1'
-
-        if pkg.is_archive:
-            raise RuntimeError("Cannot overlay on archived package")
-
-        # Patch native greenworks (Steamworks API)
+    def overlay_greenworks(self, pkg: PackageNw, nwjs: NWjs, proc: ProcessLaunchInfo):
+        """ Overlay appropriate Greenworks binaries over package """
         for path in pkg.path.rglob("greenworks.js"):
             greenworks = self.get_greenworks(nwjs)
             if not greenworks:
@@ -281,13 +263,23 @@ class Runtime(IRuntime):
             #overlayns.append("-o")
             #overlayns.append("{},shadow,lowerdir={},nodev,nosuid".format(ppath,r.nwjs_greenworks_path))
             # Instead, fall back to copies and bind mounts
-            tempdir = proc.temp_dir(prefix=str(ppath.relative_to(game.root)).replace("/", "_"))
+            tempdir = proc.temp_dir(prefix=str(ppath.relative_to(pkg.path)).replace("/", "_"))
             if ',' in str(ppath) or ',' in str(tempdir):
                 self.app.show_error("Comma in paths is currently not supported by overlayns\nGreenworks support disabled")
                 continue
             copytree(ppath, tempdir, dirs_exist_ok=True)
             copytree(greenworks.path, tempdir, dirs_exist_ok=True, copy_function=copy_unlink)
             proc.overlayns_bind(tempdir, ppath)
+
+    def overlay_files(self, game: Game, pkg: PackageNw, nwjs: NWjs, proc: ProcessLaunchInfo):
+        if pkg.is_archive:
+            raise RuntimeError("Cannot modify archived package directly")
+
+        # Patch native greenworks (Steamworks API)
+        if proc.have_overlayns:
+            self.install_greenworks(pkg, nwjs, proc)
+        else:
+            print("Warning: overlayns not supported or explicitly disabled. Greenworks integration disabled.")
 
         # TODO: make configurable
         bg_scripts: list[Path] = []
@@ -364,7 +356,7 @@ class Runtime(IRuntime):
             return e.code
 
         pkg = game.package_nw
-        proc = ProcessLaunchInfo(self.app, [nwjs.binary])
+        proc = ProcessLaunchInfo(self.app, [nwjs.binary], no_overlayns=no_overlayns)
 
         # === Maybe unpack archive ===
         if pkg.is_archive:
@@ -381,10 +373,7 @@ class Runtime(IRuntime):
         proc.workingdir = game.root
 
         # === Patch some game files ===
-        if no_overlayns:
-            self.app.show_warn("Overlayns is disabled. Plugin and Greenworks support not available.")
-        else:
-            self.overlay_files(game, pkg, nwjs, proc)
+        self.overlay_files(game, pkg, nwjs, proc)
 
         # === Execute ===
         print(f"Running {proc.argv_join()} in {game.root}")
