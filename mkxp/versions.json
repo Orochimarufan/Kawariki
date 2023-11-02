@@ -2,6 +2,9 @@
     "$schema": "../versions.schema.json",
     "format": 2,
     "name": "mkxp",
+    "common": {
+        "slug": "{variant}-{version!v}-{platform}"
+    },
     "versions": [
         {
             "variant": "mkxp-z",
