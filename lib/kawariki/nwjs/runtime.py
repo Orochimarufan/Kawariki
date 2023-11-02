@@ -171,11 +171,13 @@ class Runtime(IRuntime):
         :param nwjs: The version to download
         :raise ErrorCode: on error
         """
-        from ..download import download_dist_progress_tar
+        from ..download import download_dist_progress_archive
 
         try:
-            download_dist_progress_tar(self.app, nwjs)
+            download_dist_progress_archive(self.app, nwjs)
         except Exception:
+            import traceback
+            self.app.show_error(f"Couldn't download {nwjs.name}:\n{traceback.format_exc()}")
             raise ErrorCode(10)
 
         self.app.show_info(f"Finished downloading NW.js distribution '{nwjs.name}'")

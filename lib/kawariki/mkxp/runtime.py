@@ -46,9 +46,15 @@ class Runtime(IRuntime):
         :param mkxp: The version to download
         :raise ErrorCode: on error
         """
-        from ..download import download_dist_progress_tar
+        from ..download import download_dist_progress_archive
 
-        download_dist_progress_tar(self.app, version)
+        try:
+            download_dist_progress_archive(self.app, version)
+        except Exception:
+            import traceback
+            self.app.show_error(f"Couldn't download {version.name}:\n{traceback.format_exc()}")
+            raise ErrorCode(10)
+
 
         self.app.show_info(f"Finished downloading MKXP distribution '{version.name}'")
 

@@ -1,4 +1,4 @@
-from os import unlink
+from os import unlink, chmod
 from pathlib import Path
 from shutil import rmtree
 from tarfile import TarFile, TarInfo
@@ -139,7 +139,7 @@ def download_dist_progress_zip(app: App, dist: Distribution):
 
         tmp.seek(0)
 
-        text = f"Extracting distribution '{dist.name}\n\n"
+        text = f"Extracting distribution '{dist.name}'\n\n"
         with app.show_progress(text) as p:
             try:
                 with ZipFile(tmp, 'r') as zf:
@@ -152,7 +152,16 @@ def download_dist_progress_zip(app: App, dist: Distribution):
                                 continue
                         p.text = f"{text}{i.filename}"
                         zf.extract(i, dist.path)
+                        if i.create_system == 3 or i.create_system == 19: # ZIP_CREATE_UNIX/OS_X
+                            chmod(dist.path / i.filename, (i.external_attr >> 16) & 0o777)
                         p.progress += 1
             except:
                 rmtree(dist.path, ignore_errors=True)
                 raise
+
+def download_dist_progress_archive(app: App, dist: Distribution):
+    # TODO: Decide from content-type instead and unify d/l logic
+    if dist.url.endswith(".zip"):
+        download_dist_progress_zip(app, dist)
+    else:
+        download_dist_progress_tar(app, dist)
