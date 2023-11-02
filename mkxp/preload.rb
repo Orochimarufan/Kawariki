@@ -12,7 +12,7 @@ module Preload
     module Common
         # In RMXP mode, Kernel.print opens message boxes
         def print(text)
-            STDOUT.puts("[preload] " + text)
+            STDOUT.puts("[preload] " + text.to_s)
         end
     end
 
@@ -54,6 +54,12 @@ module Preload
 
         def blacklisted?(script)
             @blacklist.include? script.name
+        end
+
+        def add_script(name, code)
+            @scripts.pop
+            @scripts.push [name, "", nil, code]
+            # TODO: Find an empty script to canibalize instead
         end
 
         # Read options from environment
@@ -448,6 +454,12 @@ module Preload
         patch_scripts ctx
         overwrite_redefinitions ctx if ctx.flag? :redefinitions_overwrite_class
         dump_scripts ctx, :dump_scripts_patched
+        # Inject user scripts
+        print $RGSS_SCRIPTS[0]
+        Dir['*.kawariki.rb'].each do |filename|
+            print "Injecting user script #{filename}"
+            ctx.add_script(filename, File.read(filename))
+        end
         # Done
         if ctx.flag? :dont_run_game then
             print "KAWARIKI_MKXP_DRY_RUN is set, not continuing to game code"
