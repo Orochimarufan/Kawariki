@@ -4,7 +4,7 @@ from functools import cached_property
 from pathlib import Path
 from platform import machine, system
 from sys import stderr
-from typing import Sequence
+from typing import Optional, Sequence
 
 from .game import Game
 from .ui import create_gui
@@ -13,14 +13,14 @@ from .ui.common import AKawarikiUi, DummyProgressUi, MsgType
 
 class App:
     app_root: Path
-    overlayns_bin: Path
+    overlayns_binary: Optional[Path]
     platform: str
 
     def __init__(self, app_root):
         self.app_root = Path(app_root).resolve()
-        self.overlayns_binary = self.app_root / "overlayns-static"
-
         self.platform = f"{system()}-{machine()}".lower()
+        self.overlayns_binary = self.app_root / "overlayns-static" \
+            if self.platform == "linux-x86_64" else None
 
     @property
     def dist_path(self) -> Path:
