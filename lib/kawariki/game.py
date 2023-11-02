@@ -6,7 +6,7 @@ from functools import cached_property
 from os import environ
 from pathlib import Path
 from re import compile as re_compile
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 from .misc import DetectedProperty
 from .nwjs.package import PackageNw
@@ -37,8 +37,9 @@ class Game:
     # +-------------------------------------------------+
     # Engine detection
     # +-------------------------------------------------+
-    RPGMAKER_INFO_RE    = re_compile(r'''Utils.RPGMAKER_(VERSION|NAME)\s*\=\s*["']([^"']+)["']''') # rpg_core.js/rmmz_core.js
-    RPGMAKER_LIBRARY_RE = re_compile(r'''RGSS(\d+\w)(?:\.dll)?$''') # Game.ini/Game/Library
+    # www/js/rpg_core.js, js/rmmz_core.js
+    RPGMAKER_INFO_RE    = re_compile(r'''Utils.RPGMAKER_(VERSION|NAME)\s*\=\s*["']([^"']+)["']''')
+    RPGMAKER_LIBRARY_RE = re_compile(r'''RGSS(\d+\w)(?:\.dll)?$''') # Game.ini[Game.Library]
     TYRANO_VERSION_RE   = re_compile(r'''(?<!\w)version:\s*(\d+),''') # tyrano/plugins/kag.js
 
     def detect(self):
@@ -63,7 +64,7 @@ class Game:
                                 self.rpgmaker_release = m.group(2)
 
                 # Detect Tyrano Builder
-                if fs.exists("/tyrano/plugins/kag/kag.js"):
+                if fs.exists("/tyrano/plugins/kag/kag.js"): # noqa: SIM102
                     if m := self.TYRANO_VERSION_RE.search(fs.read_text("/tyrano/plugins/kag/kag.js")):
                         self.tyrano_version = m.group(1)
 
@@ -128,11 +129,11 @@ class Game:
         if pck.exists():
             return pck
         return None
-    
+
     @property
     def is_godot(self) -> bool:
         return self.godot_pack is not None
-    
+
     # +-------------------------------------------------+
     # Steam meta-information
     # +-------------------------------------------------+

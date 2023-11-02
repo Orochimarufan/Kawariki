@@ -1,13 +1,12 @@
-from os import unlink, chmod
+from os import chmod
 from pathlib import Path
 from shutil import rmtree
-from tarfile import TarFile, TarInfo
 from tarfile import open as taropen
 from tempfile import NamedTemporaryFile
-from typing import IO, Callable, Optional, Sequence
+from typing import IO, Callable, Optional
 from urllib.error import URLError
 from urllib.request import urlopen
-from zipfile import ZipFile, ZipInfo
+from zipfile import ZipFile
 
 from .app import App
 from .distribution import Distribution
@@ -31,9 +30,8 @@ def download_progress_tar(app: App, url: str, dest: Path, description: str="Down
                 with taropen(mode="r|*", fileobj=f, encoding="utf-8") as tar:
                     dest.mkdir(parents=True)
                     while info := tar.next():
-                        if modify_entry is not None:
-                            if modify_entry(info) is False:
-                                continue
+                        if modify_entry is not None and modify_entry(info) is False:
+                            continue
                         p.text = f"{description}\n\nExtracting '{info.name}'"
                         # Make sure we never go over 100%
                         if info.offset >= maxi:
@@ -147,9 +145,8 @@ def download_dist_progress_zip(app: App, dist: Distribution):
                     p.maximum = len(infos)
                     dist.path.mkdir(parents=True)
                     for i in infos:
-                        if strip_prefix is not None:
-                            if strip_prefix(i) is False:
-                                continue
+                        if strip_prefix is not None and strip_prefix(i) is False:
+                            continue
                         p.text = f"{text}{i.filename}"
                         zf.extract(i, dist.path)
                         if i.create_system == 3 or i.create_system == 19: # ZIP_CREATE_UNIX/OS_X

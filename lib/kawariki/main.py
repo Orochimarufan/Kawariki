@@ -41,18 +41,20 @@ def add_launcher(app: App, game: Game, args) -> int:
 
     selfpath = (app.app_root / pathlib.Path(sys.argv[0]).name).resolve()
     prefix = shlex.split(args.prefix) if args.prefix else []
-    
+
     path = game.root / args.launcher
     try:
         with path.open("x") as f:
-            f.write(format_launcher_script(*prefix, selfpath, "run", "--", game.binary_name_hint if game.binary_name_hint else "."))
+            binary_hint = game.binary_name_hint if game.binary_name_hint else "."
+            f.write(format_launcher_script(*prefix, selfpath, "run", "--", binary_hint))
     except FileExistsError:
-        app.show_error(f"File already exists. Please choose a different name for the Kawariki launcher or delete it first:\n{path}")
+        app.show_error("File already exists. Please choose a different name"
+                       f"for the Kawariki launcher or delete it first:\n{path}")
         return 1
     path.chmod(0o755)
-    
+
     print(f"Created launcher '{path}'")
-    
+
     return 0
 
 
@@ -75,7 +77,7 @@ def run_patcher(runtime, game, args) -> int:
         out = PatcherInPlace(game.root)
     else:
         assert 0
-    
+
     patcher.run(out, game)
 
     return 0
@@ -94,13 +96,18 @@ def check_environ(envname, type):
 
 def add_common_args(parser: argparse.ArgumentParser, env, *, gamepath=True, nwjs=True, sdk=True):
     if gamepath:
-        parser.add_argument("game", help="Path of the game directory or executable", type=pathlib.Path)
+        parser.add_argument("game", type=pathlib.Path,
+                            help="Path of the game directory or executable")
     if sdk:
-        parser.add_argument("-d", "--sdk", action="store_true", help="Select a NW.js version with DevTools support", default=env.get("sdk"))
+        parser.add_argument("-d", "--sdk", action="store_true", default=env.get("sdk"),
+                            help="Select a NW.js version with DevTools support")
     if nwjs:
-        parser.add_argument("--nwjs", help="Use specified NW.js version from 'nwjs-versions.json'", default=env.get("nwjs"))
-    parser.add_argument("--no-overlayns", help="Don't try to use linux user namespaces", action="store_true")
-    parser.add_argument("--no-unpack", help="Don't allow unpacking packaged apps to a temporary directory", action="store_true")
+        parser.add_argument("--nwjs", default=env.get("nwjs"),
+                            help="Use specified NW.js version from 'nwjs-versions.json'")
+    parser.add_argument("--no-overlayns", action="store_true",
+                        help="Don't try to use linux user namespaces")
+    parser.add_argument("--no-unpack", action="store_true",
+                        help="Don't allow unpacking packaged apps to a temporary directory")
 
 def parse_args(argv, env):
     # Parse commandline
@@ -113,34 +120,45 @@ def parse_args(argv, env):
     parser.add_argument("--version", action="version",
             version=f"Kawariki {__version__}, running on Python {version_str(sys.version_info)}")
     sub = parser.add_subparsers(dest="action")
-    add_sub_parser = lambda name, help=None: sub.add_parser(name, help=help, description=help)
+
+    def add_sub_parser(name, help=None):
+        return sub.add_parser(name, help=help, description=help)
 
     # Arguments for run mode
     run = add_sub_parser("run", help="Run a NW.js based game on a different NW.js version")
     add_common_args(run, env)
     run.add_argument("--wait", action="store_true")
-    run.add_argument("--dry", action="store_true", help="Only print the resulting command, don't run the game")
-    run.add_argument("game_args", metavar="game args", nargs="*", help="Pass additional arguments to the game")
+    run.add_argument("--dry", action="store_true",
+                     help="Only print the resulting command, don't run the game")
+    run.add_argument("game_args", nargs="*",
+                     help="Pass additional arguments to the game", metavar="game args")
 
     # Fixpath
     fixpath = add_sub_parser("fixpath")
     fixpath.add_argument("path")
 
     # Arguments for patch mode
-    patchgame = add_sub_parser("patch", help="Create a patched version of a NW.js game with a different version baked in")
+    patchgame = add_sub_parser("patch",
+                               help="Create a patched version of a NW.js game with a different version baked in")
     add_common_args(patchgame, env)
     patchgame_out = patchgame.add_argument_group("destination options").add_mutually_exclusive_group(required=True)
-    patchgame_out.add_argument("-a", "--archive", help="Create an archive file", type=pathlib.Path)
-    patchgame_out.add_argument("-o", "--dest", help="Store patched game in this directory", type=pathlib.Path)
-    patchgame_out.add_argument("--link-dest", help="Store patched game in this directory, use hard links to save space",
-            type=pathlib.Path)
-    patchgame_out.add_argument("--inplace", action="store_true", help="Modify the game in place")
+    patchgame_out.add_argument("-a", "--archive", type=pathlib.Path,
+                               help="Create an archive file")
+    patchgame_out.add_argument("-o", "--dest", type=pathlib.Path,
+                               help="Store patched game in this directory")
+    patchgame_out.add_argument("--link-dest", type=pathlib.Path,
+                               help="Store patched game in this directory, use hard links to save space")
+    patchgame_out.add_argument("--inplace", action="store_true",
+                               help="Modify the game in place")
 
     # Arguments for launcher mode
-    create_launcher = add_sub_parser("launcher", help="Add a launcher script to the game directory")
+    create_launcher = add_sub_parser("launcher",
+                                     help="Add a launcher script to the game directory")
     add_common_args(create_launcher, env)
-    create_launcher.add_argument("-p", "--prefix", help="Prefix the command to run (e.g. primusrun/gamemode/gamescope)")
-    create_launcher.add_argument("launcher", help="Filename of the launcher to create [%(default)s]", default="Game.sh", nargs="?")
+    create_launcher.add_argument("-p", "--prefix",
+                                 help="Prefix the command to run (e.g. primusrun/gamemode/gamescope)")
+    create_launcher.add_argument("launcher", nargs="?", default="Game.sh",
+                                 help="Filename of the launcher to create [%(default)s]")
 
     return parser.parse_args(argv[1:])
 
@@ -162,7 +180,7 @@ def main(app, argv) -> int:
         return 0
 
     print(f"v{__version__}, python {version_str(sys.version_info)}; {shlex.join(argv[1:])}", file=sys.stderr)
-    
+
     if args.action == "run" and args.game.name == "iscriptevaluator.exe":
         # Skip install scripts.
         print("Skipping iscriptevaluator.exe invocation", file=sys.stderr)
@@ -183,14 +201,14 @@ def main(app, argv) -> int:
 
     if args.action == "launcher":
         return add_launcher(app, game, args)
-    
+
     # TODO: Do this better. It really shouldn't mess with the global environ
     quirk = STEAM_QUIRKS.get(game.steam_appid, None)
     if quirk is not None:
         print(f"Using quirks for Steam appid: {game.steam_appid}")
         if 'environ' in quirk:
             os.environ.update(quirk['environ'])
-    
+
     # Check game type
     runtime: IRuntime
     if game.is_nwjs_app:
@@ -209,7 +227,9 @@ def main(app, argv) -> int:
     if args.action == "run":
         # Ignore --wait for now
         try:
-            return runtime.run(game, args.game_args, nwjs_name=args.nwjs, dry=args.dry, sdk=args.sdk, no_overlayns=args.no_overlayns, no_unpack=args.no_unpack)
+            return runtime.run(game, args.game_args,
+                               nwjs_name=args.nwjs, dry=args.dry, sdk=args.sdk,
+                               no_overlayns=args.no_overlayns, no_unpack=args.no_unpack)
         except ErrorCode as e:
             return e.code
     elif args.action == "patch":

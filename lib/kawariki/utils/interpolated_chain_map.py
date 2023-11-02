@@ -1,9 +1,8 @@
-
-from string import Formatter
-from typing import Any, Dict, Generic, List, Optional, Set, TypeVar
-from functools import cached_property
 from fnmatch import fnmatchcase
+from functools import cached_property
 from re import compile as re_compile
+from string import Formatter
+from typing import Dict, Generic, List, Optional, Set, TypeVar
 
 T = TypeVar("T")
 
@@ -26,7 +25,7 @@ class InterpolatedChainMap(Generic[T]):
     @cached_property
     def _keys(self) -> Set[str]:
         return set().union(*self._maps)
-    
+
     def _invalidate(self):
         self._cache.clear()
         del self._keys
@@ -74,7 +73,7 @@ class InterpolatedChainMap(Generic[T]):
 
     def __len__(self) -> int:
         return len(self._keys)     # reuses stored hash values if possible
-    
+
     def keys(self) -> List[str]:
         return list(self._keys)
 

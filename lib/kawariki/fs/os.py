@@ -1,8 +1,8 @@
 from os import DirEntry, scandir
 from pathlib import Path as OsPath
-from typing import TYPE_CHECKING, Optional, Iterator, Union, IO
+from typing import Iterator, Union, IO
 
-from . import AnyPath, Entry, Fs, Path, FileModeRO
+from . import AnyPath, Fs, Path, FileModeRO
 
 
 class OsEntry:

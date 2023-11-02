@@ -25,7 +25,7 @@ class TtyProgress(AKawarikiProgressUi):
         self._update()
         self.io.write('\n'*self._lines)
         self.io.flush()
-    
+
     def _update(self, title=None, text=None, progress=None, maximum=None):
         if title is not None:
             self._title = title

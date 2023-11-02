@@ -1,15 +1,15 @@
 from __future__ import annotations
-from contextlib import contextmanager
 
+from contextlib import contextmanager
 from functools import cached_property
 from os import chdir, environ, execve
-from pathlib import PurePath
+from pathlib import Path, PurePath
 from shlex import join as shlex_join
-from shutil import copyfileobj, copy
+from shutil import copy, copyfileobj
 from subprocess import call
 from sys import stderr, stdout
 from tempfile import NamedTemporaryFile, TemporaryDirectory, mkdtemp
-from typing import (IO, Any, BinaryIO, Callable, List, Literal,
+from typing import (Any, BinaryIO, Callable, IO, Iterator, List, Literal,
                     NoReturn, Optional, Sequence, TextIO, Union, overload)
 from warnings import warn
 
@@ -57,7 +57,7 @@ class ProcessEnvironment:
         self._overlayns.append(f"bind,{src},{mp}")
 
     @contextmanager
-    def replace_file(self, path: PathLike, mode: Literal["w", "a"]="w") -> IO[str]:
+    def replace_file(self, path: Path, mode: Literal["w", "a"]="w") -> Iterator[IO[str]]:
         """ Replace the content of a file for the process while keeping the original version.
             Either by overlaying using overlayns or by renaming and restoring after process exits.
             Note that the latter option is neither re-entrant nor self-cleaning.
@@ -66,7 +66,7 @@ class ProcessEnvironment:
             if self.have_overlayns:
                 with self.temp_file(prefix=path.stem, suffix=path.suffix) as tf:
                     if mode == "a":
-                        with open(path, "r") as f:
+                        with path.open('r') as f:
                             copyfileobj(f, tf)
                     yield tf
                     self.overlayns_bind(tf.name, path)
@@ -81,7 +81,7 @@ class ProcessEnvironment:
                 copy(backup, path)
         else:
             self.at_cleanup(path.unlink)
-        with open(path, mode) as f:
+        with path.open(mode) as f:
             yield f
 
     # Temporary files
@@ -112,10 +112,14 @@ class ProcessEnvironment:
                   buffering: int = -1, encoding: Optional[str] = None, newline: Optional[str] = None,
                   suffix: Optional[str] = None, prefix: Optional[str] = None, delete=False, **kwds) -> IO[Any]:
         """ Create a temporary file that will be removed on cleanup() """
-        return NamedTemporaryFile(mode, buffering, encoding, newline, suffix, prefix, self._tempdir.name, delete, **kwds)
+        return NamedTemporaryFile(mode,
+                                  buffering, encoding, newline,
+                                  suffix, prefix, self._tempdir.name,
+                                  delete, **kwds)
 
     # Cleanup
     def at_cleanup(self, cb: Callable[[], Any]) -> None:
+        """ Run function at cleanup time """
         self._cleanups.append(cb)
 
     def cleanup(self) -> None:
@@ -132,7 +136,7 @@ class ProcessEnvironment:
 
     def __enter__(self):
         return self
-    
+
     def __exit__(self, *args):
         self.cleanup()
 
@@ -164,7 +168,6 @@ class ProcessLaunchInfo(ProcessEnvironment):
         """ Return a joined string version of the argv """
         return shlex_join(map(str, self.argv))
 
-    
     # Execution
     def _prepare(self) -> tuple[list[str], dict[str, str]]:
         argv = [str(x) for x in self.argv]
@@ -205,4 +208,3 @@ class ProcessLaunchInfo(ProcessEnvironment):
                 self.cleanup()
 
     # TODO: add a call() variant that isn't NoReturn()
-

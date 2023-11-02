@@ -4,7 +4,7 @@
 
 import subprocess
 
-from .common import MsgType, AKawarikiUi, AKawarikiProgressUi, DummyProgressUi
+from .common import MsgType, AKawarikiUi
 
 
 class ZenityGui(AKawarikiUi):
@@ -51,7 +51,7 @@ class ZenityGui(AKawarikiUi):
         def progress(self, progress):
             self._progress = progress
             if self.proc:
-                self.proc.stdin.write(f"{self.percentage:.0f}\n".encode("utf-8"))
+                self.proc.stdin.write(f"{self.percentage:.0f}\n".encode())
                 self.proc.stdin.flush()
 
         @property
@@ -62,7 +62,7 @@ class ZenityGui(AKawarikiUi):
         def text(self, text):
             self._text = text
             if self.proc:
-                self.proc.stdin.write(f"#{text}\n".encode("utf-8"))
+                self.proc.stdin.write(f"#{text}\n".encode())
                 self.proc.stdin.flush()
 
     def show_progress(self, *args, **kwds):

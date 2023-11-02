@@ -36,8 +36,8 @@ class App:
             MsgType.Info: 34,
         }
         print(f"\033[{colors[type]}m{title}\033[0m:" if stderr.isatty() else f"{title}:", file=stderr)
-        for l in message.split('\n'):
-            print('\t', l, file=stderr)
+        for line in message.splitlines():
+            print('\t', line, file=stderr)
 
     @cached_property
     def gui(self) -> AKawarikiUi:
@@ -75,8 +75,11 @@ class App:
 
 class IRuntime:
     @abstractmethod
-    def run(self, game: Game, arguments: Sequence[str], *, nwjs_name=None, dry=False, sdk=None, no_overlayns=False, no_unpack=False) -> int:
+    def run(self, game: Game, arguments: Sequence[str], *,
+            nwjs_name=None, dry=False, sdk=None,
+            no_overlayns=False, no_unpack=False) -> int:
         pass
+
     @abstractmethod
     def get_patcher(self, game: Game):
         pass

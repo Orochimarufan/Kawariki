@@ -33,7 +33,7 @@ class TkProgressDialog(AKawarikiProgressUi):
         self._update()
         self.dialog.withdraw()
         self.dialog.destroy()
-    
+
     def _update(self, title=None, text=None, progress=None, maximum=None):
         if title is not None:
             self.dialog.title(title)

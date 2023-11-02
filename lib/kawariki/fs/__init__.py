@@ -77,7 +77,7 @@ class Fs(ABC):
     def read_text(self, path: AnyPath, *, encoding=None, errors=None) -> str:
         with self.open(path, "r", encoding=encoding, errors=errors) as f:
             return f.read()
-    
+
     def read_bytes(self, path: AnyPath) -> bytes:
         with self.open(path, "rb") as f:
             return f.read()
@@ -92,12 +92,12 @@ class PurePath(PurePosixPath):
         if other.is_absolute():
             other = other.relative_to(other.root)
         return self / other
-    
+
     def as_relative(self) -> 'PurePath':
         if self.is_absolute():
             return PurePath(*self.parts[1:])
         return self
-        
+
 
 class Path(PurePath):
     def __init__(self, fs: Fs, *pathsegments: AnyPath):
@@ -137,11 +137,11 @@ class Path(PurePath):
 
     def open(self, mode: FileModeRO="r", *, encoding=None, errors=None) -> Union[IO[str], IO[bytes]]:
         return self.fs.open(self, mode, encoding=encoding, errors=errors)
-    
+
     def read_text(self) -> str:
         with self.open("r") as f:
             return f.read()
-    
+
     def read_bytes(self) -> bytes:
         with self.open("rb") as f:
             return f.read()

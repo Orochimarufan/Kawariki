@@ -2,11 +2,11 @@
 #   UI
 # :---------------------------------------------------------------------------:
 
-from .common import MsgType, AKawarikiUi
-
-from shutil import which
+from importlib.util import find_spec
 from os import environ
+from shutil import which
 
+from .common import AKawarikiUi
 
 # Tkinter check
 _HAVE_TK = None
@@ -14,12 +14,7 @@ _HAVE_TK = None
 def have_tkinter() -> bool:
     global _HAVE_TK
     if _HAVE_TK is None:
-        try:
-            import tkinter.ttk
-        except ImportError:
-            _HAVE_TK = False
-        else:
-            _HAVE_TK = True
+        _HAVE_TK = find_spec("tkinter") is not None
     return _HAVE_TK
 
 
@@ -30,13 +25,17 @@ def _try_create_gui(what):
             from .tkinter import TkGui
             return TkGui()
     elif what == "zenity":
-        if (prog := which("zenity")):
+        prog = which("zenity")
+        if prog:
             from .external import ZenityGui
             return ZenityGui(prog)
     elif what == "kdialog":
-        if (prog := which("kdialog")):
+        prog = which("kdialog")
+        if prog:
             from .external import KDialogGui
             return KDialogGui(prog)
+    else:
+        raise KeyError(what)
 
 _GUI_OPTOINS = [
             (("tkinter", "tk"), "Tkinter", "tkinter package"),
@@ -52,11 +51,11 @@ def create_gui() -> AKawarikiUi:
             if specified in ss:
                 if gui := _try_create_gui(ss[0]):
                     return gui
-                print("Warning: Explicitly requested %s GUI, but %s not available" % (name, req))
+                print("Warning: Explicitly requested %s GUI, but %s not available" % (name, req)) # noqa: UP031
                 break
         else:
             print("Warning: Unknown value for KAWARIKI_GUI: %s" % specified)
-    
+
     # Try to use any implementation
     for ss, _, _ in _GUI_OPTOINS:
         if gui := _try_create_gui(ss[0]):

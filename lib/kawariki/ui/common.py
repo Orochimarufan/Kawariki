@@ -20,7 +20,7 @@ class AKawarikiProgressUi:
     def __init__(self, title: str, text: str, progress=0, maximum=100):
         self._progress = progress
         self._maximum = maximum
-    
+
     # Abstract
     def begin(self):
         pass
@@ -35,24 +35,26 @@ class AKawarikiProgressUi:
     # Property interface
     def update(self, *, title=None, text=None, progress=None, maximum=None):
         self._update(title, text, progress, maximum)
-        if progress is not None: self._progress = progress
-        if maximum is not None: self._maximum = maximum
+        if progress is not None:
+            self._progress = progress
+        if maximum is not None:
+            self._maximum = maximum
 
     def __enter__(self):
         self.begin()
         return self
-    
+
     def __exit__(self, et, e, tb):
         self.end()
-    
+
     @_setter_only
     def title(self, value):
         self.update(title=value)
-    
+
     @_setter_only
     def text(self, value):
         self.update(text=value)
-    
+
     @property
     def progress(self):
         return self._progress
@@ -60,11 +62,11 @@ class AKawarikiProgressUi:
     @progress.setter
     def progress(self, value):
         self.update(progress=value)
-    
+
     @property
     def maximum(self):
         return self._maximum
-    
+
     @maximum.setter
     def maximum(self, value):
         self.update(maximum=value)

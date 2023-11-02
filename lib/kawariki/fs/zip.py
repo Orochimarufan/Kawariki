@@ -4,7 +4,7 @@ from functools import cached_property
 from logging import getLogger
 from io import TextIOWrapper
 
-from . import AnyPath, Entry, Fs, PurePath, Path, FileModeRO
+from . import AnyPath, Fs, PurePath, Path, FileModeRO
 
 
 logger = getLogger(__name__)
