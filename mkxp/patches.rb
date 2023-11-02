@@ -43,6 +43,10 @@ module Preload
                 script.context.mark :incompatible_bgm_checked
             }
             .remove!,
+        Patch.new("CRDJ Input script: Use MKXP-Z input extensions")
+            .imported?(nil)
+            .include?("# A module that handles input data from a gamepad or keyboard.\r\n# Managed by symbols rather than button numbers in RGSS3.")
+            .replace!("CRDJ_Input.rb"),
         # Specific Inline Patches
         Patch.new("Try to fix superclass mismatches from MP Scene_Base")
             .imported?(nil)
