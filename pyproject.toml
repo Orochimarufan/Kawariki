@@ -1,0 +1,39 @@
+[project]
+name = "Kawariki"
+description = "Linux game runtime/compatibility tool"
+authors = [
+    { name = "Taeyeon Mori" }
+]
+readme = "README.md"
+requires-python = ">=3.8"
+
+[tool.pyright]
+pythonVersion = "3.8"
+reportTypedDictNotRequiredAccess = false
+
+[tool.mypy]
+python_version = "3.8"
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py38"
+
+src = ["lib"]
+
+lint.select = [
+    "W", "E", # pycodestyle
+    "F", # flakes
+    "UP", # pyupgrade
+    "SIM", # simplify
+    "RUF", # ruff
+]
+lint.ignore = [
+    "UP015", # Unnecessary open() parameters
+]
+
+lint.pyupgrade.keep-runtime-typing = true # Don't allow new syntax even when using __future__ annotations
+
+[tool.isort]
+multi_line_output = 0
+line_length = 100

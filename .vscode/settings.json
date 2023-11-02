@@ -1,3 +1,7 @@
 {
-    "python.envFile": "${workspaceFolder}/.vscode/.env"
+    "python.envFile": "${workspaceFolder}/.vscode/.env",
+    "isort.args": [
+        "--settings-path=pyproject.toml"
+    ],
+    "ruff.organizeImports": false
 }

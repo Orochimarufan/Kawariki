@@ -143,7 +143,6 @@ class Distribution(Generic[DI]):
     @property
     def binary(self) -> Path:
         """ Path to the main binary file """
-        # pyright: ignore[reportTypedDictNotRequiredAccess]
         return self.path / self.info["binary"]
 
     # Methods
