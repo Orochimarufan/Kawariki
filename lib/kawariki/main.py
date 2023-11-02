@@ -29,7 +29,7 @@ import pathlib
 import shlex
 import sys
 
-from .misc import version_str, hardlink_or_copy
+from .misc import ErrorCode, version_str, hardlink_or_copy
 from .app import App, IRuntime
 from .game import Game
 from .quirks import STEAM_QUIRKS
@@ -208,7 +208,10 @@ def main(app, argv) -> int:
 
     if args.action == "run":
         # Ignore --wait for now
-        return runtime.run(game, args.game_args, nwjs_name=args.nwjs, dry=args.dry, sdk=args.sdk, no_overlayns=args.no_overlayns, no_unpack=args.no_unpack)
+        try:
+            return runtime.run(game, args.game_args, nwjs_name=args.nwjs, dry=args.dry, sdk=args.sdk, no_overlayns=args.no_overlayns, no_unpack=args.no_unpack)
+        except ErrorCode as e:
+            return e.code
     elif args.action == "patch":
         return run_patcher(runtime, game, args)
     else:

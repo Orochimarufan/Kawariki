@@ -11,7 +11,7 @@ from zipfile import ZipFile, ZipInfo
 
 from .app import App
 from .distribution import Distribution
-from .misc import size_str
+from .misc import ErrorCode, size_str
 
 
 def download_progress_tar(app: App, url: str, dest: Path, description: str="Downloading file...",
@@ -161,7 +161,12 @@ def download_dist_progress_zip(app: App, dist: Distribution):
 
 def download_dist_progress_archive(app: App, dist: Distribution):
     # TODO: Decide from content-type instead and unify d/l logic
-    if dist.url.endswith(".zip"):
+    try:
+        url = dist.url
+    except KeyError:
+        app.show_error(f"Cannot download distribution '{dist.name}': No download URL specified")
+        raise ErrorCode(10)
+    if url.endswith(".zip"):
         download_dist_progress_zip(app, dist)
     else:
         download_dist_progress_tar(app, dist)

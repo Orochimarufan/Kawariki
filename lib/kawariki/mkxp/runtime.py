@@ -50,6 +50,8 @@ class Runtime(IRuntime):
 
         try:
             download_dist_progress_archive(self.app, version)
+        except ErrorCode:
+            raise
         except Exception:
             import traceback
             self.app.show_error(f"Couldn't download {version.name}:\n{traceback.format_exc()}")
@@ -64,7 +66,11 @@ class Runtime(IRuntime):
 
     def get_mkxp_version(self):
         # TODO: Make selectable and such
-        ver = self.mkxp_versions[0]
+        try:
+            ver = self.mkxp_versions[0]
+        except IndexError:
+            self.app.show_error(f"No suitable MKXP version found for platform {self.app.platform}")
+            raise ErrorCode(10)
         if not ver.available:
             self.try_download_version(ver)
         return ver
