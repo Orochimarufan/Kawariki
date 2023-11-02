@@ -1,5 +1,6 @@
 import json
 import os
+from contextlib import suppress
 from functools import cached_property
 from pathlib import Path
 from shutil import copytree
@@ -307,6 +308,18 @@ class Runtime(IRuntime):
         if conf["main"].startswith("app://"):
             conf["main"] = conf["main"][6:]
             print("Fixed old package.json/main syntax")
+        if "name" not in conf or not conf["name"]:
+            conf["name"] = "Kawariki NW.js App"
+            if conf["main"].endswith(".html"):
+                with suppress(Exception): # Just keep default if anything fails
+                    with open(pkg.path / conf["main"]) as f:
+                        html = f.read()
+                    start = html.find("<title>")
+                    if start >= 0:
+                        start += 7
+                        end = html.find("</title>", start)
+                        if end >= 0:
+                            conf["name"] = html[start:end]
 
         if os.environ.get("KAWARIKI_NWJS_DEVTOOLS"):
             code.append("""(typeof nw !== "undefined"? nw : require("nw.gui")).Window.get().showDevTools()""")
