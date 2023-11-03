@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "sourceMap": true,
+        "removeComments": true,
+        "composite": true,
+    },
+    "references": [
+        {"path": "src/tsconfig.es13.json"},
+        {"path": "src/tsconfig.es5.json"},
+    ],
+    "files": [],
+}

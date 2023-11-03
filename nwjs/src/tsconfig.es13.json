@@ -1,0 +1,13 @@
+{
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        "module": "None",
+        "target": "ES2022",
+        "outDir": "../js/es13",
+    },
+    "files": [
+        "rpg-definitions.d.ts",
+        "rpg-remap.ts",
+        "rpg-vars.ts",
+    ]
+}

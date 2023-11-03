@@ -5,7 +5,7 @@ from functools import cached_property
 from pathlib import Path
 from shutil import copytree
 from tempfile import NamedTemporaryFile
-from typing import IO, ContextManager, Dict, Literal, Optional, Sequence, Tuple, Union
+from typing import IO, ContextManager, Dict, List, Literal, Optional, Sequence, Tuple, Union
 
 from ..app import App, IRuntime
 from ..distribution import Distribution, DistributionInfo
@@ -302,24 +302,33 @@ class Runtime(IRuntime):
             print("Warning: overlayns not supported or explicitly disabled. Greenworks integration disabled.")
 
         # TODO: make configurable
-        bg_scripts: list[Path] = []
-        inject_scripts = []
+        bg_scripts: List[Path] = []
+        inject_scripts: List[Path] = []
+        code: List[str] = []
         conf = pkg.read_json()
-        code = []
 
-        bg_scripts.append(self.base_path / 'injects/case-insensitive-nw.js')
+        # Try to use modern JS: ES2022/ES13 supported since Chromium 94/NW.js 0.57
+        js = self.base_path / 'js'
+        es_version = "es5" if nwjs.version < (0, 57) else "es13"
+        ts = js / es_version
+
+        def inject_script(path: Path, *, target=inject_scripts):
+            if path.exists():
+                target.append(path)
+            else:
+                print(f"Note: Script '{path.name}' isn't available with NW.js version {nwjs.version_str}")
+
+        inject_script(js / "case-insensitive-nw.js", target=bg_scripts)
 
         if game.rpgmaker_release in ("MV", "MZ"):
             # Disable this if we can detect a rmmv  plugin that provides remapping?
-            inject_scripts.append(self.base_path / 'injects/rpg-remap.js')
-            inject_scripts.append(self.base_path / 'injects/rpg-vars.js')
+            inject_script(ts / "rpg-remap.js")
+            inject_script(ts / "rpg-vars.js")
             if os.environ.get("KAWARIKI_NWJS_RPG_DECRYPTED_ASSETS"):
-                if game.rpgmaker_release == "MV" and not game.is_rpgmaker_mv_legacy:
-                    inject_scripts.append(self.base_path / 'injects/mv-decrypted-assets.js')
-                elif game.rpgmaker_release == "MZ":
-                    inject_scripts.append(self.base_path / 'injects/mz-decrypted-assets.js')
-                else:
+                if game.is_rpgmaker_mv_legacy or game.rpgmaker_release not in ("MV", "MZ"):
                     self.app.show_warn("RPGMaker version isn't supported for KAWARIKI_NWJS_RPG_DECRYPTED_ASSETS")
+                else:
+                    inject_script(js / f"{game.rpgmaker_release.lower()}-decrypted-assets.js")
 
         # User scripts
         for userscript in pkg.enclosing_directory.glob("*.kawariki.js"):
@@ -361,9 +370,6 @@ class Runtime(IRuntime):
                 conf['bg-script'] = self._inject_file(pkg, proc, "preload", bg_scripts)
             if inject_scripts or code:
                 conf['inject_js_start'] = self._inject_file(pkg, proc, "inject", inject_scripts, code=code)
-        elif nwjs.version >= (0, 13):
-            if bg_scripts or inject_scripts or code:
-                conf['inject_js_start'] = self._inject_file(pkg, proc, "inject", bg_scripts + inject_scripts, code=code)
         else:
             if bg_scripts or inject_scripts or code:
                 #modify main.html

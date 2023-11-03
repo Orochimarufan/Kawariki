@@ -97,3 +97,4 @@ class RpgVariableList extends Array {
         return this.from(ids.map(i => new RpgVariable(ns, i)));
     }
 }
+//# sourceMappingURL=rpg-vars.js.map

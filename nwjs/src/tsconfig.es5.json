@@ -1,12 +1,12 @@
 {
+    "extends": "../tsconfig.json",
     "compilerOptions": {
         "module": "None",
-        "sourceMap": true,
         "target": "ES5",
-        "removeComments": true
+        "outDir": "../js/es5",
     },
     "files": [
         "rpg-definitions.d.ts",
         "rpg-remap.ts",
-    ]
+    ],
 }
