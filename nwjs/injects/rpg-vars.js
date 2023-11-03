@@ -5,58 +5,6 @@
  */
 
 /**
- * A list of RPGMaker variables
- * @template [T=any]
- * @extends {Array<RpgVariable<T>>}
- */
-class RpgVariableList extends Array {
-    /**
-     * Filter array in place
-     * @param {(v: RpgVariable, i: number, a: RpgVariableList) => boolean} condition
-     * @returns {this}
-     */
-    narrow(condition) {
-        let j = 0;
-        this.forEach((e, i) => {
-            if (condition(e, i, this)) {
-                if (i!==j)
-                    this[j] = e;
-                j++;
-            }
-        });
-        this.length = j;
-        return this;
-    }
-
-    /**
-     * Narrow list by current value
-     * @param {any} value
-     * @returns {this}
-     */
-    narrowValue(value) {
-        return this.narrow(v => v.get() === value);
-    }
-
-    /**
-     * Narrow list by checking which variables have recently changed
-     * @returns {this}
-     */
-    narrowChanges() {
-        return this.narrow(v => v.hasChanged());
-    }
-
-    /**
-     * Create new array from variable ids
-     * @param {RpgVariable_NS} ns ID namespace
-     * @param {number[]} ids The variable ids
-     * @returns {this}
-     */
-    static from_ids(ns, ids) {
-        return this.from(ids.map(i => new RpgVariable(ns, i)));
-    }
-}
-
-/**
  * Represents a reference to a RPGMaker variable
  * @template [T=any]
  */
@@ -183,5 +131,57 @@ class RpgVariable {
 
     toString() {
         return `[${this.name}] = ${this.get()}`;
+    }
+}
+
+/**
+ * A list of RPGMaker variables
+ * @template [T=any]
+ * @extends {Array<RpgVariable<T>>}
+ */
+class RpgVariableList extends Array {
+    /**
+     * Filter array in place
+     * @param {(v: RpgVariable, i: number, a: RpgVariableList) => boolean} condition
+     * @returns {this}
+     */
+    narrow(condition) {
+        let j = 0;
+        this.forEach((e, i) => {
+            if (condition(e, i, this)) {
+                if (i!==j)
+                    this[j] = e;
+                j++;
+            }
+        });
+        this.length = j;
+        return this;
+    }
+
+    /**
+     * Narrow list by current value
+     * @param {any} value
+     * @returns {this}
+     */
+    narrowValue(value) {
+        return this.narrow(v => v.get() === value);
+    }
+
+    /**
+     * Narrow list by checking which variables have recently changed
+     * @returns {this}
+     */
+    narrowChanges() {
+        return this.narrow(v => v.hasChanged());
+    }
+
+    /**
+     * Create new array from variable ids
+     * @param {RpgVariable_NS} ns ID namespace
+     * @param {number[]} ids The variable ids
+     * @returns {this}
+     */
+    static from_ids(ns, ids) {
+        return this.from(ids.map(i => new RpgVariable(ns, i)));
     }
 }
