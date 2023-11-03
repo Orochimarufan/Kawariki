@@ -3,7 +3,7 @@
     "format": 2,
     "name": "nwjs",
     "platforms": {
-        "linux-x64_64": "linux-x64",
+        "linux-x86_64": "linux-x64",
         "linux-i386": "linux-ia32",
         "linux-i686": "linux-ia32",
         "darwin-x86_64": "osx-x64"
