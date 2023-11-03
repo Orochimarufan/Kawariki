@@ -1,9 +1,6 @@
 (function () {
     var _a, _b, _c;
-    var id = function (o) { return o; };
-    var _key = id;
-    var _action = id;
-    var key = _key({
+    var key = {
         backspace: 8,
         tab: 9,
         clear: 12,
@@ -135,8 +132,8 @@
         backslash: 220,
         bracket_close: 221,
         quote: 222,
-    });
-    var action = _action({
+    };
+    var action = {
         tab: 'tab',
         shift: 'shift',
         control: 'control',
@@ -151,7 +148,7 @@
         ok: 'ok',
         confirm: 'ok',
         cancel: 'escape',
-    });
+    };
     var map = {
         w: 'up',
         a: 'left',
@@ -162,9 +159,7 @@
         r: 'pageup',
         f: 'pagedown',
     };
-    var options = {
-        overrideBCE: false,
-    };
+    var plugins = {};
     var _object = Object;
     var Object_mapEntries = (_object.fromEntries !== undefined
         ? function (obj, fn) {
@@ -191,27 +186,38 @@
         Object.keys(source).forEach(function (key) { return target[key] = source[key]; });
         return target;
     });
+    function Array_removeInPlace(arr, elm) {
+        var ix = arr.indexOf(elm);
+        if (ix >= 0)
+            arr.splice(ix, 1);
+    }
+    ;
     var keyByCode = Object_mapEntries(key, function (_a) {
         var key = _a[0], code = _a[1];
         return [code, key];
     });
-    var hook_vanilla = function (kas) { return kas.forEach(function (_a) {
-        var _b;
-        var keyname = _a[0], act = _a[1];
-        Input.keyMapper[key[keyname]] = (_b = action[act]) !== null && _b !== void 0 ? _b : act;
-    }); };
+    function apply_keymapper(kas, mapper) {
+        mapper !== null && mapper !== void 0 ? mapper : (mapper = Input.keyMapper);
+        kas.forEach(function (_a) {
+            var _b;
+            var keyname = _a[0], act = _a[1];
+            mapper[key[keyname]] = (_b = action[act]) !== null && _b !== void 0 ? _b : act;
+        });
+    }
+    var hook_vanilla = apply_keymapper;
     var hooks = [hook_vanilla];
-    function _apply(map) {
-        var kas = Object_entries(map);
+    function apply(kmap) {
+        if (kmap === void 0) { kmap = map; }
+        var kas = Object_entries(kmap);
         hooks.forEach(function (hook) { return hook(kas); });
     }
     function set(keyname, act) {
-        var _a;
         map[keyname] = act;
-        _apply((_a = {}, _a[keyname] = act, _a));
+        hooks.forEach(function (hook) { return hook([[keyname, act]]); });
     }
-    function get() {
-        return Object_mapEntries(Input.keyMapper, function (_a) {
+    function get(mapper) {
+        mapper !== null && mapper !== void 0 ? mapper : (mapper = Input.keyMapper);
+        return Object_mapEntries(mapper, function (_a) {
             var code = _a[0], coreAction = _a[1];
             var k = keyByCode[code];
             return [k !== undefined ? k : code, coreAction];
@@ -219,12 +225,12 @@
     }
     function add(mappings) {
         Object_assign(map, mappings);
-        _apply(mappings);
-    }
-    function apply() {
-        _apply(map);
+        apply(mappings);
     }
     function setupYEP_BCE() {
+        plugins.ButtonCommonEvents = {
+            override: false,
+        };
         var YEP_BCE_switch_map = {
             OK: 'ok',
             CANCEL: 'escape',
@@ -275,7 +281,7 @@
         var _switchButton = Input._switchButton;
         Input._switchButton = function (button) {
             _switchButton.call(Input, button);
-            if (options.overrideBCE) {
+            if (plugins.ButtonCommonEvents.override) {
                 apply();
             }
             else if (button === 'ALL') {
@@ -311,6 +317,16 @@
                 });
             }
         };
+        apply();
+    }
+    function setupYEP_KeyConf() {
+        var p = plugins.KeyboardConfig = {
+            initialMap: Object.freeze(get(ConfigManager.keyMapper)),
+            initialWasd: Object.freeze(get(ConfigManager.wasdMap)),
+        };
+        apply_keymapper(Object_entries(map), ConfigManager.wasdMap);
+        ConfigManager.readKeyConfig = function (config, name) { var _a; return (_a = config[name]) !== null && _a !== void 0 ? _a : Object_assign({}, ConfigManager.wasdMap); };
+        Array_removeInPlace(hooks, hook_vanilla);
     }
     function setupQInput() {
         var qinput_keys = QInput.keys;
@@ -345,26 +361,32 @@
             });
         };
         hooks.push(hook_qinput);
+        apply();
     }
     var initialKeyMap = {};
     window.addEventListener("load", function () {
         Object.freeze(Object_assign(initialKeyMap, get()));
-        apply();
+        (function () {
+            if (typeof Imported !== "undefined") {
+                if (Imported.YEP_KeyboardConfig !== undefined) {
+                    return setupYEP_KeyConf();
+                }
+                else if (Imported.YEP_ButtonCommonEvents !== undefined) {
+                    return setupYEP_BCE();
+                }
+                else if (Imported.QInput !== undefined) {
+                    return setupQInput();
+                }
+            }
+            return apply();
+        })();
         console.log("RPG MV/MZ Remap loaded.", map);
-        if (typeof Imported !== "undefined") {
-            if (Imported.YEP_ButtonCommonEvents !== undefined) {
-                setupYEP_BCE();
-            }
-            if (Imported.QInput !== undefined) {
-                setupQInput();
-            }
-        }
     });
     window.Remap = Object.freeze({
         initial: initialKeyMap,
         key: key,
         action: action,
-        options: options,
+        plugins: plugins,
         map: window.Proxy !== undefined
             ? new window.Proxy(map, {
                 set: function (target, p, value, receiver) {

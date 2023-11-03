@@ -175,9 +175,15 @@
     };
 
     /** Special options */
-    const options = {
-        overrideBCE: false,
-    };
+    const plugins: {
+        KeyboardConfig?: {
+            initialMap: Readonly<Map>,
+            initialWasd: Readonly<Map>,
+        },
+        ButtonCommonEvents?: {
+            override: boolean,
+        },
+    } = {};
 
     // ------------------------ Polyfills ---------------------
     // need to support back to NWjs 0.12.3/Chromium 41 for RMMV
@@ -220,30 +226,43 @@
             Object.keys(source).forEach(key => target[key] = source[key]);
             return target as T & U;
         });
+    
+    function Array_removeInPlace<T>(arr: T[], elm: T) {
+        const ix = arr.indexOf(elm);
+        if (ix >= 0)
+            arr.splice(ix, 1);
+    };
 
     // ------------------------ Code --------------------------
     const keyByCode: Record<number, Key> = Object_mapEntries(key, ([key, code]) => [code, key]);
 
+    function apply_keymapper(kas: [Key, Action|string][], mapper?: Input_KeyMapper) {
+        mapper ??= Input.keyMapper;
+        kas.forEach(([keyname, act]) => {
+            mapper[key[keyname]] = action[act] ?? act;
+        });
+    }
+
     type ApplyHook = (kas: [Key, Action|string][]) => void;
-    const hook_vanilla: ApplyHook = kas => kas.forEach(([keyname, act]) => {
-        Input.keyMapper[key[keyname]] = action[act] ?? act;
-    });
+    const hook_vanilla: ApplyHook = apply_keymapper;
     const hooks: ApplyHook[] = [hook_vanilla];
 
-    function _apply(map: Map): void {
-        const kas = Object_entries(map) as [Key, string][];
+    /** Re-Apply custom mappings */
+    function apply(kmap: Map=map): void {
+        const kas = Object_entries(kmap) as [Key, string][];
         hooks.forEach(hook => hook(kas));
     }
 
     /** Set a single key mapping */
     function set(keyname: Key, act: Action|string): void {
         map[keyname] = act;
-        _apply({[keyname]: act});
+        hooks.forEach(hook => hook([[keyname, act]]));
     }
 
     /** Get currently active mappings from game core */
-    function get(): Map {
-        return Object_mapEntries(Input.keyMapper, ([code, coreAction]) => {
+    function get(mapper?: Input_KeyMapper): Map {
+        mapper ??= Input.keyMapper;
+        return Object_mapEntries(mapper, ([code, coreAction]) => {
             const k = keyByCode[code];
             return [k !== undefined ? k : code, coreAction];
         });
@@ -252,18 +271,17 @@
     /** Add new mappings */
     function add(mappings: Map): void {
         Object_assign(map, mappings);
-        _apply(mappings);
-    }
-
-    /** Re-Apply custom mappings */
-    function apply(): void {
-        _apply(map);
+        apply(mappings);
     }
 
     // ------------------------ Plugins -----------------------
     // Yanfly ButtonCommonEvents support
     function setupYEP_BCE() {
-        const YEP_BCE_switch_map: Record<string, _Action> = {
+        plugins.ButtonCommonEvents = {
+            override: false,
+        };
+
+        const YEP_BCE_switch_map: Record<string, Input_Action> = {
             OK: 'ok',
             CANCEL: 'escape',
             DASH: 'shift',
@@ -315,7 +333,7 @@
         const _switchButton = Input._switchButton as (button: string) => void;
         Input._switchButton = (button) => {
             _switchButton.call(Input, button);
-            if (options.overrideBCE) {
+            if (plugins.ButtonCommonEvents.override) {
                 apply();
             } else if (button === 'ALL') {
                 Object.keys(YEP_BCE_key_map).forEach(k => {
@@ -349,6 +367,21 @@
                 });
             }
         }
+
+        apply();
+    }
+
+    function setupYEP_KeyConf() {
+        const p = plugins.KeyboardConfig = {
+            initialMap: Object.freeze(get(ConfigManager.keyMapper)),
+            initialWasd: Object.freeze(get(ConfigManager.wasdMap)),
+        };
+        // Adjust default maps, prefer wasd map
+        apply_keymapper(Object_entries(map) as [Key, string][], ConfigManager.wasdMap);
+        ConfigManager.readKeyConfig = (config, name) => config[name] ?? Object_assign({}, ConfigManager.wasdMap);
+        // Don't mess with the vanilla keymapper
+        Array_removeInPlace(hooks, hook_vanilla);
+        // XXX: apply over top of loaded key config?
     }
 
     // Quxios QInput
@@ -364,7 +397,7 @@
                 qa.push(key);
                 collected[act] = qa;
             });
-            const qkeys = ConfigManager.keys as Record<_QAction, string|string[]>;
+            const qkeys = ConfigManager.keys as Record<_QInput_Action, string|string[]>;
             Object.keys(qkeys).forEach(qa => {
                 const keys: string[] = collected[qa] ?? [];
                 qkeys[qa].forEach((key: string) => {
@@ -375,30 +408,34 @@
             });
         };
         hooks.push(hook_qinput);
+        apply();
     }
 
     const initialKeyMap = {};
 
     window.addEventListener("load", () => {
         Object.freeze(Object_assign(initialKeyMap, get()));
-        apply();
-        console.log("RPG MV/MZ Remap loaded.", map);
+        (() => {
         if (typeof Imported !== "undefined") {
-            if (Imported.YEP_ButtonCommonEvents !== undefined) {
-                setupYEP_BCE();
-            }
-            if (Imported.QInput !== undefined) {
-                setupQInput();
+                if (Imported.YEP_KeyboardConfig !== undefined) {
+                    return setupYEP_KeyConf();
+                } else if (Imported.YEP_ButtonCommonEvents !== undefined) {
+                    return setupYEP_BCE();
+                } else if (Imported.QInput !== undefined) {
+                    return setupQInput();
             }
         }
+            return apply();
+        })();
+        console.log("RPG MV/MZ Remap loaded.", map);
     });
 
     // ------------------------ API ---------------------------
     (window as any).Remap = Object.freeze({
         initial: initialKeyMap,
-        key: key,
-        action: action,
-        options: options,
+        key,
+        action,
+        plugins,
         map: (window as any).Proxy !== undefined
             ? new (window as any).Proxy(map, {
                 set: (target, p, value, receiver) => {
