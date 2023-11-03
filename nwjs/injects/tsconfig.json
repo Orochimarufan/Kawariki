@@ -6,6 +6,7 @@
         "removeComments": true
     },
     "files": [
-        "rpg-remap.ts"
+        "rpg-definitions.d.ts",
+        "rpg-remap.ts",
     ]
 }

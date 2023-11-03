@@ -2,36 +2,10 @@
 // TODO: make configurable somehow
 // Ideally GUI?
 
-// ---------------------------- External ----------------------
-// RPGMaker core
-type _Action = 'tab'|'shift'|'control'|'escape'|'debug'|'pageup'|'pagedown'|'up'|'left'|'down'|'right'|'ok';
-declare const Imported: Record<string, any>|undefined;
-declare const Input: {
-    keyMapper: Record<number, _Action|string>,
-    _switchButton?: (button: string) => void, // Yanfly
-    _revertButton?: (button: string) => void, // Yanfly
-};
-// Yanfly plugin
-declare const Yanfly: any;
-// QInput plugin
-type _QAction = _Action|'fps'|'streched'|'fullscreen'|'restart'|'console';
-declare const QInput: undefined|{
-    remapped: {[k in _QAction]: string},
-    keys: {[k: number]: string},
-};
-declare const ConfigManager: {
-    keys?: {[a in _QAction]: string|string[]}
-};
-
 (() => {
-    // Typing helpers
-    const id: <T>(t: T) => T = (o) => o;
-    var _key: <T>(et: { [K in keyof T]: number }) => typeof et = id;
-    var _action: <T>(et: { [K in keyof T]: _Action }) => typeof et = id;
-
     // ------------------------ Constants ---------------------
     /** All valid key constants */
-    const key = _key({
+    const key = {
         backspace: 8,
         tab: 9,
         clear: 12,
@@ -163,10 +137,10 @@ declare const ConfigManager: {
         backslash: 220,
         bracket_close: 221,
         quote: 222,
-    });
+    } satisfies Record<string, number>;
 
     /** Pre-defined standatd action names */
-    const action = _action({
+    const action = {
         tab: 'tab',
         shift: 'shift',
         control: 'control',
@@ -181,7 +155,7 @@ declare const ConfigManager: {
         ok: 'ok',
         confirm: 'ok',
         cancel: 'escape',
-    });
+    } satisfies Record<string, Input_Action>;
 
     type Key = keyof typeof key;
     type Action = keyof typeof action;
