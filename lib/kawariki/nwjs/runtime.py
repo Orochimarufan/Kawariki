@@ -5,7 +5,7 @@ from functools import cached_property
 from pathlib import Path
 from shutil import copytree
 from tempfile import NamedTemporaryFile
-from typing import Dict, List, Literal, Optional, Sequence, Tuple, Union
+from typing import IO, ContextManager, Dict, Literal, Optional, Sequence, Tuple, Union
 
 from ..app import App, IRuntime
 from ..distribution import Distribution, DistributionInfo
@@ -18,21 +18,27 @@ from .package import PackageNw
 class NWjsDistributionInfo(DistributionInfo):
     sdk: bool
 
+
 class GreenworksDistInfo(DistributionInfo):
-    nwjs: Sequence[Sequence[int]] # Required
+    nwjs: Sequence[Sequence[int]]   # Required
 
 
 class NWjs(Distribution):
+    """ A distribution of NW.js """
     info: NWjsDistributionInfo
 
     @property
     def is_sdk(self) -> bool:
+        """ Whether distribution includes SDK features """
         return self.info.get("sdk", False)
 
     @classmethod
-    def load_variants(cls, info: NWjsDistributionInfo, dist_path: Path, platform=None, platform_map: Optional[Dict[str, str]] = None, defaults: Optional[NWjsDistributionInfo] = None):
-        if info.get('sdk', defaults.get('sdk', None)) == "synthesize":
-            alias: List[str] = info.get('alias', [])
+    def load_variants(cls, info: NWjsDistributionInfo, dist_path: Path, platform=None,
+                      platform_map: Optional[Dict[str, str]] = None,
+                      defaults: Optional[NWjsDistributionInfo] = None):
+        """ Synthesize sdk and non-sdk variants if sdk=synthesize """
+        if info.get('sdk', defaults.get('sdk', None) if defaults else None) == "synthesize":
+            alias: Sequence[str] = info.get('alias', [])
             info_sdk = info.copy()
             info_sdk.update(sdk=True, alias=[*alias, *(f"{a}-sdk" for a in alias)])
             info_nosdk = info.copy()
@@ -44,28 +50,30 @@ class NWjs(Distribution):
 
 
 class GreenworksDistribution(Distribution):
+    """ A distribution of Greenworks for NW.js """
     info: GreenworksDistInfo
 
     @property
     def nwjs_version(self) -> Tuple[int, ...]:
+        """ The first compatible NW.js version """
         return tuple(self.info["nwjs"][0])
 
     def is_compatible(self, nwjs: NWjs) -> bool:
-        for ver in self.info["nwjs"]:
-            if nwjs.version[:len(ver)] == tuple(ver):
-                return True
-        return False
+        """ Check whether this Greenworks distribution works with a specific NW.js version """
+        return any(nwjs.version[:len(ver)] == tuple(ver) for ver in self.info["nwjs"])
 
 
-def overlay_or_clobber(pkg: PackageNw, proc: ProcessLaunchInfo, filename: str, mode: Literal["a", "w"]="w"):
+def overlay_or_clobber(pkg: PackageNw, proc: ProcessLaunchInfo,
+                       filename: str, mode: Literal["a", "w"]="w") -> ContextManager[IO[str]]:
+    """ Clobber file if pkg.may_clobber, otherwise use proc.replace_file  to overlay """
     path = pkg.path / filename
     if pkg.may_clobber:
         return path.open(mode)
-    else:
-        return proc.replace_file(path, mode)
+    return proc.replace_file(path, mode)
 
 
 class Runtime(IRuntime):
+    """ Kawariki runtime for NW.js based games """
     app: App
     base: Path
     overlayns_bin: Path
@@ -84,15 +92,20 @@ class Runtime(IRuntime):
     # +-------------------------------------------------+
     @cached_property
     def nwjs_versions(self) -> Sequence[NWjs]:
+        """ All compatible distributions of NW.js from versions.json """
         return NWjs.load_json(self.base_path / "versions.json", self.nwjs_dist_path, self.app.platform)
 
     def get_nwjs(self, version_name: str) -> Optional[NWjs]:
+        """ Get a specific NW.js distribution by alias """
         for ver in self.nwjs_versions:
             if ver.match(version_name):
                 return ver
         return None
 
-    def get_nwjs_version(self, min=None, max=None, sdk=None) -> Optional[NWjs]:
+    def get_nwjs_version(self,
+                         minver: Optional[Tuple[int, ...]]=None,
+                         maxver: Optional[Tuple[int, ...]]=None,
+                         sdk: Optional[bool]=None) -> Optional[NWjs]:
         """
         Get the latest NW.js version available matching the requirements
 
@@ -101,14 +114,14 @@ class Runtime(IRuntime):
         :param sdk: Require DevTools-enabled distribution
         """
         if v := sorted([ver for ver in self.nwjs_versions
-                            if  (min is None or min <= ver.version)
-                            and (max is None or max >= ver.version)
-                            and (not sdk or ver.is_sdk)],
-                        key=lambda ver: (ver.version, ver.available, not ver.is_sdk)):
+                        if all(((minver is None or minver <= ver.version),
+                                (maxver is None or maxver >= ver.version),
+                                (not sdk or ver.is_sdk)))],
+                       key=lambda ver: (ver.version, ver.available, not ver.is_sdk)):
             return v[-1]
         return None
 
-    def select_nwjs_version(self, game: Game, nwjs_name: str=None, sdk=False) -> NWjs:
+    def select_nwjs_version(self, game: Game, nwjs_name: Optional[str]=None, sdk: Optional[bool]=False) -> NWjs:
         """
         Select NW.js distribution suitable for game
 
@@ -118,12 +131,13 @@ class Runtime(IRuntime):
         :raise ErrorCode:
         """
         nwjs = None
+
         if nwjs_name is not None:
-            if (nwjs := self.get_nwjs(nwjs_name)) is None:
+            nwjs = self.get_nwjs(nwjs_name)
+            if nwjs is None:
                 self.app.show_error(f"Specified NW.js version '{nwjs_name}' doesn't exist. Check nwjs/versions.json")
                 raise ErrorCode(5)
-            else:
-                print(f"Using specified NW.js version '{nwjs_name}' ({nwjs.name})")
+            print(f"Using specified NW.js version '{nwjs_name}' ({nwjs.name})")
 
         if game.is_rpgmaker:
             print(f"Looks like RPGMaker {game.rpgmaker_release} {version_str(game.rpgmaker_version or ())}")
@@ -135,22 +149,26 @@ class Runtime(IRuntime):
                     print("Using modern Nw.js with legacy RPGMaker MV version (KAWARIKI_NWJS_IGNORE_LEGACY_MV=1)")
                 elif nwjs is not None:
                     if nwjs.version >= (0, 13):
-                        self.app.show_warn(f"Overriding NW.js version for legacy RMMV (before 1.6) game.\nSelected version is {nwjs.version}, but legacy RMMV may only work correctly with NW.js up to 0.12.x")
+                        self.app.show_warn(
+                            "Overriding NW.js version for legacy RMMV (before 1.6) game.\n"
+                            f"Selected version is {nwjs.version}, "
+                            "but legacy RMMV may not work correctly with NW.js > 0.12.x")
                 else:
                     print("Trying to use NW.js suitable for legacy RMMV (before 1.6)")
-                    nwjs = self.get_nwjs_version(max=(0, 12, 99))
+                    nwjs = self.get_nwjs_version(maxver=(0, 12, 99))
                     if nwjs is None:
-                        self.app.show_warn("No NW.js version suitable for RMMV before 1.6 found (requires NW.js older than 0.13)\nNow trying to run the game with modern NW.js, but YMMV")
-                        #raise ErrorCode(5)
+                        self.app.show_warn(
+                            "No NW.js version suitable for RMMV before 1.6 found (requires NW.js older than 0.13)\n"
+                            "Now trying to run the game with modern NW.js, but YMMV")
         elif game.tyrano_version:
             print(f"Looks like Tyrano builder v{game.tyrano_version}")
 
         if nwjs is None:
-            if (nwjs := self.get_nwjs_version(min=(0, 13), sdk=sdk)) is None:
+            nwjs = self.get_nwjs_version(minver=(0, 13), sdk=sdk)
+            if nwjs is None:
                 self.app.show_error("No suitable NW.js version found in nwjs/versions.json")
                 raise ErrorCode(6)
-            else:
-                print(f"Selected NW.js version: {nwjs.name}")
+            print(f"Selected NW.js version: {nwjs.name}")
 
         return nwjs
 
@@ -166,14 +184,15 @@ class Runtime(IRuntime):
 
         try:
             download_dist_progress_archive(self.app, nwjs)
-        except Exception:
+        except Exception as e:
             import traceback
             self.app.show_error(f"Couldn't download {nwjs.name}:\n{traceback.format_exc()}")
-            raise ErrorCode(10)
+            raise ErrorCode(10) from e
 
         self.app.show_info(f"Finished downloading NW.js distribution '{nwjs.name}'")
 
-    def select_and_download_nwjs(self, game: Game, nwjs_name: str=None, sdk=False) -> NWjs:
+    def select_and_download_nwjs(self, game: Game, nwjs_name: Optional[str]=None, sdk: Optional[bool]=False) -> NWjs:
+        """ Select and then (if needed) download an appropriate NW.js distribution """
         # Select nwjs version
         nwjs = self.select_nwjs_version(game, nwjs_name, sdk)
 
@@ -181,7 +200,7 @@ class Runtime(IRuntime):
         if not nwjs.available:
             self.try_download_nwjs(nwjs)
 
-        if not os.access(nwjs.binary, os.X_OK|os.F_OK):
+        if not os.access(nwjs.binary, os.X_OK | os.F_OK):
             self.app.show_error(f"Entry '{nwjs.name}' in nwjs/versions.json is broken:\n'{nwjs.binary}' doesn't exist")
             raise ErrorCode(6)
 
@@ -189,9 +208,13 @@ class Runtime(IRuntime):
 
     @cached_property
     def greenworks_versions(self) -> Sequence[GreenworksDistribution]:
-        return GreenworksDistribution.load_json(self.base_path / "greenworks.json", self.greenworks_dist_path, self.platform)
+        """ All Greenworks distributions for the current platform """
+        return GreenworksDistribution.load_json(self.base_path / "greenworks.json",
+                                                self.greenworks_dist_path,
+                                                self.app.platform)
 
     def get_greenworks(self, nwjs: NWjs) -> Optional[GreenworksDistribution]:
+        """ Select a Greenworks distribution compatible with a NW.js distribution """
         for gw in self.greenworks_versions:
             if gw.is_compatible(nwjs):
                 return gw
@@ -200,10 +223,13 @@ class Runtime(IRuntime):
     # +-------------------------------------------------+
     #   Run NW.js for Game
     # +-------------------------------------------------+
-    def _inject_file(self, pkg: PackageNw, proc: ProcessLaunchInfo,
-            mode: Union[Literal["preload"], Literal["inject"]],
-            scripts: Sequence[Path],
-            code: Optional[Sequence[str]]=None):
+    def _inject_file(self,
+                     pkg: PackageNw,
+                     proc: ProcessLaunchInfo,
+                     mode: Union[Literal["preload"], Literal["inject"]],
+                     scripts: Sequence[Path],
+                     code: Optional[Sequence[str]]=None):
+        """ Create a file to be set as bg_script/inject """
         with NamedTemporaryFile("w", dir=pkg.path, prefix=f"{mode}-", suffix=".js", delete=False) as f:
         #with proc.temp_file(prefix=f"{mode}-", suffix=".js") as f:
             name = os.path.basename(f.name)
@@ -258,7 +284,8 @@ class Runtime(IRuntime):
             # Instead, fall back to copies and bind mounts
             tempdir = proc.temp_dir(prefix=str(ppath.relative_to(pkg.path)).replace("/", "_"))
             if ',' in str(ppath) or ',' in str(tempdir):
-                self.app.show_error("Comma in paths is currently not supported by overlayns\nGreenworks support disabled")
+                self.app.show_error("Comma in paths is currently not supported by overlayns\n"
+                                    "Greenworks support disabled")
                 continue
             copytree(ppath, tempdir, dirs_exist_ok=True)
             copytree(greenworks.path, tempdir, dirs_exist_ok=True, copy_function=copy_unlink)
@@ -270,7 +297,7 @@ class Runtime(IRuntime):
 
         # Patch native greenworks (Steamworks API)
         if proc.have_overlayns:
-            self.install_greenworks(pkg, nwjs, proc)
+            self.overlay_greenworks(pkg, nwjs, proc)
         else:
             print("Warning: overlayns not supported or explicitly disabled. Greenworks integration disabled.")
 
@@ -323,7 +350,7 @@ class Runtime(IRuntime):
 
         if os.environ.get("KAWARIKI_NWJS_DEVTOOLS"):
             code.append("""(typeof nw !== "undefined"? nw : require("nw.gui")).Window.get().showDevTools()""")
-        
+
         if os.environ.get("KAWARIKI_NWJS_INJECT_BG"):
             inject_scripts = [*bg_scripts, *inject_scripts]
             bg_scripts = []
@@ -350,7 +377,9 @@ class Runtime(IRuntime):
         with overlay_or_clobber(pkg, proc, pkg.json) as f:
             json.dump(conf, f)
 
-    def run(self, game, arguments: Sequence[str], nwjs_name=None, dry=False, sdk=None, no_overlayns=False, no_unpack=False) -> int:
+    def run(self, game, arguments: Sequence[str],
+            nwjs_name: Optional[str]=None, dry=False, sdk: Optional[bool]=None,
+            no_overlayns=False, no_unpack=False) -> int:
         if not game.is_nwjs_app:
             raise RuntimeError("Called nwjs.Runtime.run with non-NW.js game")
 
