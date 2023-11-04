@@ -17,6 +17,6 @@
         "rpg-definitions.d.ts",
         "rpg-inject.mts",
         "rpg-remap.mts",
-        "rpg-vars.ts",
+        "rpg-vars.mts",
     ],
 }

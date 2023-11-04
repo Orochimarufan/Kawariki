@@ -1,4 +1,4 @@
-class RpgVariable {
+export class Var {
     static NAMESPACES = {
         "variable": {
             "names": () => $dataSystem.variables,
@@ -17,7 +17,7 @@ class RpgVariable {
     constructor(ns, id) {
         this.ns = ns;
         this.id = id;
-        const space = RpgVariable.NAMESPACES[ns];
+        const space = Var.NAMESPACES[ns];
         this.name = space.names()[id];
         this._data = space.values;
         this.lastValue = this._read();
@@ -54,24 +54,24 @@ class RpgVariable {
         }
     }
     static findValue(value) {
-        return RpgVariableList.from(this._fmchain((v, i) => (v === value ? new this("variable", i) : undefined), $gameVariables._data));
+        return VarList.from(this._fmchain((v, i) => (v === value ? new this("variable", i) : undefined), $gameVariables._data));
     }
     static findName(name) {
-        return RpgVariableList.from(this._fmchain((n, i, it) => (n.includes(name) ? new this(it === $dataSystem.variables ? "variable" : "switch", i) : undefined), $dataSystem.variables, $dataSystem.switches));
+        return VarList.from(this._fmchain((n, i, it) => (n.includes(name) ? new this(it === $dataSystem.variables ? "variable" : "switch", i) : undefined), $dataSystem.variables, $dataSystem.switches));
     }
     static allVariables() {
-        return RpgVariableList.from($gameVariables._data
+        return VarList.from($gameVariables._data
             .map((_, i) => new this("variable", i)));
     }
     static allSwitches() {
-        return RpgVariableList.from($gameSwitches._data
+        return VarList.from($gameSwitches._data
             .map((_, i) => new this("switch", i)));
     }
     toString() {
         return `[${this.name}] = ${this.get()}`;
     }
 }
-class RpgVariableList extends Array {
+export class VarList extends Array {
     narrow(condition) {
         let j = 0;
         this.forEach((e, i) => {
@@ -94,7 +94,9 @@ class RpgVariableList extends Array {
         return super.from(iter);
     }
     static from_ids(ns, ids) {
-        return this.from(ids.map(i => new RpgVariable(ns, i)));
+        return this.from(ids.map(i => new Var(ns, i)));
     }
 }
-//# sourceMappingURL=rpg-vars.js.map
+window.RpgVariable = Var;
+window.RpgVariableList = VarList;
+//# sourceMappingURL=rpg-vars.mjs.map

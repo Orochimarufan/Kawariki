@@ -1,13 +1,12 @@
-// RPG Variable inspection utilities
+// RPGMaker MV/MZ Variable inspection utilities
 
-
-type RpgVariable_NS = "variable"|"switch";
+export type VarType = "variable"|"switch";
 
 /**
  * Represents a reference to a RPGMaker variable
  */
-class RpgVariable<T=any> {
-    static NAMESPACES: Record<RpgVariable_NS, {names: () => string[], values: () => any[]}> = {
+export class Var<T=any> {
+    static NAMESPACES: Record<VarType, {names: () => string[], values: () => any[]}> = {
         "variable": {
             "names": () => $dataSystem.variables,
             "values": () => $gameVariables._data,
@@ -18,7 +17,7 @@ class RpgVariable<T=any> {
         }
     };
 
-    readonly ns: RpgVariable_NS;
+    readonly ns: VarType;
     readonly id: number;
     readonly name: string;
     private readonly _data: () => any[];
@@ -29,10 +28,10 @@ class RpgVariable<T=any> {
      * @param ns The id namespace
      * @param id The variable id
      */
-    constructor(ns: RpgVariable_NS, id: number) {
+    constructor(ns: VarType, id: number) {
         this.ns = ns;
         this.id = id;
-        const space = RpgVariable.NAMESPACES[ns];
+        const space = Var.NAMESPACES[ns];
         this.name = space.names()[id];
         this._data = space.values;
         this.lastValue = this._read();
@@ -100,8 +99,8 @@ class RpgVariable<T=any> {
      * Find variables that currently have a specific value
      * @param value The value to look for
      */
-    static findValue<T=any>(value: T): RpgVariableList<T> {
-        return RpgVariableList.from(this._fmchain(
+    static findValue<T=any>(value: T): VarList<T> {
+        return VarList.from(this._fmchain(
             (v, i) => (v === value ? new this("variable", i) : undefined),
             $gameVariables._data));
     }
@@ -109,8 +108,8 @@ class RpgVariable<T=any> {
     /**
      * Find a variable or switch by name
      */
-    static findName(name: string): RpgVariableList<any> {
-        return RpgVariableList.from(this._fmchain(
+    static findName(name: string): VarList<any> {
+        return VarList.from(this._fmchain(
             (n, i, it) => (n.includes(name) ? new this(it === $dataSystem.variables ? "variable" : "switch", i) : undefined),
             $dataSystem.variables, $dataSystem.switches));
     }
@@ -118,16 +117,16 @@ class RpgVariable<T=any> {
     /**
      * Get all variables
      */
-    static allVariables(): RpgVariableList<any> {
-        return RpgVariableList.from($gameVariables._data
+    static allVariables(): VarList<any> {
+        return VarList.from($gameVariables._data
             .map((_, i) => new this("variable", i)));
     }
 
     /**
      * Get all switches
      */
-    static allSwitches(): RpgVariableList<boolean> {
-        return RpgVariableList.from($gameSwitches._data
+    static allSwitches(): VarList<boolean> {
+        return VarList.from($gameSwitches._data
             .map((_, i) => new this("switch", i)));
     }
 
@@ -139,11 +138,11 @@ class RpgVariable<T=any> {
 /**
  * A list of RPGMaker variables
  */
-class RpgVariableList<T=any> extends Array<RpgVariable<T>> {
+export class VarList<T=any> extends Array<Var<T>> {
     /**
      * Filter array in place
      */
-    narrow(condition: (v: RpgVariable, i: number, a: RpgVariableList) => boolean): this {
+    narrow(condition: (v: Var, i: number, a: VarList) => boolean): this {
         let j = 0;
         this.forEach((e, i) => {
             if (condition(e, i, this)) {
@@ -171,14 +170,24 @@ class RpgVariableList<T=any> extends Array<RpgVariable<T>> {
     }
 
     // Correct typing for Array.from
-    static from<T=any>(iter: Iterable<RpgVariable<T>>|ArrayLike<RpgVariable<T>>): RpgVariableList<T> {
-        return super.from(iter) as RpgVariableList<T>;
+    static from<T=any>(iter: Iterable<Var<T>>|ArrayLike<Var<T>>): VarList<T> {
+        return super.from(iter) as VarList<T>;
     }
 
     /**
      * Create new array from variable ids
      */
-    static from_ids<NS extends RpgVariable_NS>(ns: NS, ids: number[]): RpgVariableList<NS extends "switch"?boolean:any> {
-        return this.from(ids.map(i => new RpgVariable(ns, i))) as RpgVariableList;
+    static from_ids<NS extends VarType>(ns: NS, ids: number[]): VarList<NS extends "switch"?boolean:any> {
+        return this.from(ids.map(i => new Var(ns, i))) as VarList;
     }
 }
+
+
+// Add globals on window
+declare global {
+    var RpgVariable: typeof Var;
+    var RpgVariableList: typeof VarList;
+}
+
+window.RpgVariable = Var;
+window.RpgVariableList = VarList;
