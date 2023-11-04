@@ -1,12 +1,13 @@
 {
     "extends": "../tsconfig.json",
     "compilerOptions": {
-        "module": "None",
+        "module": "System",
         "target": "ES5",
         "outDir": "../js/es5",
         "paths": {
             // Required by @types/node
             "undici-types": ["../node_modules/undici-types/index.d.ts"],
+            "$kawariki:es/": ["./", "../js/es5/"],
         },
     },
     "files": [

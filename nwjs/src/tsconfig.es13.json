@@ -1,12 +1,13 @@
 {
     "extends": "../tsconfig.json",
     "compilerOptions": {
-        "module": "None",
+        "module": "ES2022",
         "target": "ES2022",
         "outDir": "../js/es13",
         "paths": {
             // Required by @types/node
             "undici-types": ["../node_modules/undici-types/index.d.ts"],
+            "$kawariki:es/": ["./", "../js/es13/"],
         },
     },
     "files": [

@@ -1,3 +1,5 @@
 *.js.map
+*.mjs.map
 *.d.ts
+*.d.mts
 *.tsbuildinfo

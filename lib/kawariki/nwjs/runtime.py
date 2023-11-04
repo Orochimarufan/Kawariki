@@ -5,13 +5,14 @@ from functools import cached_property
 from pathlib import Path
 from shutil import copytree
 from tempfile import NamedTemporaryFile
-from typing import IO, ContextManager, Dict, List, Literal, Optional, Sequence, Tuple, Union
+from typing import IO, Callable, ContextManager, Dict, List, Literal, Optional, Sequence, Tuple, TypedDict, Union
 
 from ..app import App, IRuntime
 from ..distribution import Distribution, DistributionInfo
 from ..game import Game
 from ..misc import ErrorCode, copy_unlink, version_str
 from ..process import ProcessLaunchInfo
+from ..utils.textwrap import dedent, indent
 from .package import PackageNw
 
 
@@ -72,10 +73,238 @@ def overlay_or_clobber(pkg: PackageNw, proc: ProcessLaunchInfo,
     return proc.replace_file(path, mode)
 
 
+class InjectFileBuilder:
+    rt: 'Runtime'
+    nwjs: NWjs
+
+    # inject = inject_js_start, preload = bg_script package.json keys
+    Context = Literal["inject", "preload"]
+    Type = Literal["import", "script", "require", "eval"]
+
+    class Script(TypedDict):
+        context: Sequence['InjectFileBuilder.Context']
+        type: 'InjectFileBuilder.Type'
+        src: str
+
+    scripts: List[Script]
+    importmap: Dict[str, Path]
+    importmap_r: Dict[Path, str]
+
+    _missing: Callable[[Path], None]
+
+    def __init__(self, rt: 'Runtime', nwjs: NWjs):
+        self.rt = rt
+        self.nwjs = nwjs
+
+        self.scripts = []
+        self.importmap = {
+            "$kawariki:es/": self.es_path,
+        }
+        self.importmap_r = {p: k for k, p in self.importmap.items()}
+
+        self._missing = self._notfound_error
+
+    def __bool__(self):
+        return bool(self.scripts)
+
+    def has_scripts_for(self, contexts: Sequence[Context]) -> bool:
+        return any(ctx in script["context"] for ctx in contexts for script in self.scripts)
+
+    def __add__(self, other: 'InjectFileBuilder') -> 'InjectFileBuilder':
+        new = InjectFileBuilder()
+        new.scripts = [*self.scripts, *other.scripts]
+        new.importmap = self.importmap.copy()
+        new.importmap.update(other.importmap)
+        new.importmap_r = self.importmap_r.copy()
+        new.importmap_r.update(other.importmap_r)
+        return new
+
+    def __iadd__(self, other: 'InjectFileBuilder'):
+        self.scripts.extend(other.scripts)
+        self.importmap.update(other.importmap)
+        self.importmap_r.update(other.importmap_r)
+
+    def clear(self):
+        self.scripts.clear()
+        self.importmap.clear()
+        self.importmap_r.clear()
+
+    #### Engine capabilities ####
+    # Supported ECMAScript levels with minimum NW.js version
+    # Every level has it's own transpiled scripts in 'js/es{level}'
+    ES_LEVELS = (
+        # ES13 (2022) supported since NW.js 0.57 (Chromium 94)
+        ((0, 57), 13),
+        # Only support down to NW.js 0.12 (required by old RMMV versions)
+        ((0, 12), 5),
+    )
+
+    @cached_property
+    def es_level(self) -> int:
+        """ The highest ECMAScript level supported by the NW.js distro """
+        for min_nwjs_version, es in self.ES_LEVELS:
+            if self.nwjs.version >= min_nwjs_version:
+                return es
+
+    @property
+    def es_tag(self) -> str:
+        return f"es{self.es_level}"
+
+    @property
+    def es_path(self) -> Path:
+        """ The path to the compiled files for the current ES level """
+        return self.rt.base_path / 'js' / self.es_tag
+
+    @property
+    def has_es_modules(self) -> bool:
+        # Dynamic import introduced in ES11 (2020)
+        return self.es_level >= 11
+
+    #### Modules & ImportMaps ####
+    def map(self, name: str, path: Path):
+        self.importmap[name] = path
+        self.importmap_r[path] = name
+
+    def _map_module(self, path: Path) -> str:
+        if name := self.importmap_r.get(path):
+            return name
+        if ns := self.importmap_r.get(path.parent):  # noqa: SIM102
+            if ns.endswith('/'):
+                return f"{ns}{path.name}"
+        return f"file://{path}"
+
+    def _notfound_error(self, path: Path):
+        raise FileNotFoundError(path)
+
+    def module(self, path: Union[Path, str], context: Sequence[Context]=("inject",)):
+        """ Inject an ES Module """
+        src = None
+        if isinstance(path, str):
+            src = f"$kawariki:es/{path}"
+            path = self.es_path / path
+        if not path.exists():
+            return self._missing(path)
+        elif src is None:
+            src = self._map_module(path)
+        if any(c != "inject" for c in context):
+            raise ValueError("Modules aren't supported for preload (yet)")
+        self.scripts.append({
+            "context": context,
+            "type": "import" if self.has_es_modules else "system",
+            "src": src,
+        })
+
+    @property
+    def importmap_json(self) -> dict:
+        """ The import map as JSON object """
+        return {
+            "imports": {k: f"file://{path}{'/' if k.endswith('/') else ''}" for k, path in self.importmap.items()}
+        }
+
+    #### Legacy Scripts & Code ####
+    def script(self, path: Union[Path, str]):
+        """ Inject as script tag (inject only) """
+        if isinstance(path, str):
+            path = self.es_path / path
+        if not path.exists():
+            return self._missing(path)
+        self.scripts.append({
+            "context": ("inject",),
+            "type": "script",
+            "src": f"file://{path}"
+        })
+
+    def require(self, path: Path, context: Sequence[Context]=("preload",)):
+        """ Inject a require() call (Nodejs)"""
+        if not path.exists():
+            return self._missing(path)
+        self.scripts.append({
+            "context": context,
+            "type": "require",
+            "src": f"file://{path}"
+        })
+
+    def eval(self, source: str, context: Sequence[Context]=("inject",)):
+        self.scripts.append({
+            "context": context,
+            "type": "eval",
+            "src": source,
+        })
+
+    #### File generation ####
+    def write(self, file: IO[str], contexts: Sequence[Context]):
+        """ Build a file for inject_js_start or bg_script keys """
+        file.write("(function() {\n")
+        ilevel = "    "
+        if "inject" in contexts:
+            file.write(dedent("""\
+                    var head = document.head ? document.head : document.documentElement;
+                    function appendScript(attrs, onload) {
+                        var el = document.createElement("script");
+                        for (var attr in attrs) {
+                            el[attr] = attrs[attr];
+                        }
+                        if (onload !== undefined) {
+                            el.addEventListener("load", onload);
+                        }
+                        head.appendChild(el);
+                        return el;
+                    }
+                """, ilevel))
+        file.write(dedent("""\
+                    function injectScripts(scripts) {
+                        scripts.forEach(function(script) {
+                            if (script.type === 'import') {
+                                import(script.src);
+                            } else if (script.type === 'system') {
+                                System.import(script.src);
+                            } else if (script.type === 'script') {
+                                appendScript({type: "text/javascript", src: script.src});
+                            } else if (script.type === 'require') {
+                                require(script.src);
+                            } else if (script.type === 'eval') {
+                                eval(script.src);
+                            } else {
+                                console.error('Unknown script type', script);
+                            }
+                        });
+                    }
+            """, ilevel))
+        def js(obj) -> str:
+            return indent(json.dumps(obj, indent=2), ilevel, skip_first=True)
+        omit_keys = {"context"}
+        scripts = [{k: v for k, v in script.items() if k not in omit_keys}
+                   for script in self.scripts
+                   if any(ctx in script["context"] for ctx in contexts)]
+        file.write(f"{ilevel}var scripts = {js(scripts)};\n")
+        if "inject" in contexts:
+            file.write(f"{ilevel}var importmap = {js(self.importmap_json)};\n")
+            if self.has_es_modules:
+                # Add importmap to DOM. <script type=importmap> doesn't seem to fire load event
+                file.write(dedent("""\
+                    appendScript({type: "importmap", textContent: JSON.stringify(importmap)});
+                    injectScripts(scripts);
+                    """, ilevel))
+            else:
+                # Use s.js
+                file.write(dedent(f"""\
+                    appendScript({{type: "text/javascript", src: "file://{self.es_path / "s.js"}"}},
+                        function(ev) {{
+                            System.addImportMap(importmap);
+                            injectScripts(scripts);
+                        }}
+                    );
+                    """, ilevel))
+        else:
+            # Preload only, no modules support
+            file.write("    injectScripts(scripts);\n")
+        file.write("})();\n")
+
+
 class Runtime(IRuntime):
     """ Kawariki runtime for NW.js based games """
     app: App
-    base: Path
+    base_path: Path
     overlayns_bin: Path
     nwjs_dist_path: Path
     greenworks_dist_path: Path
@@ -226,38 +455,18 @@ class Runtime(IRuntime):
     def _inject_file(self,
                      pkg: PackageNw,
                      proc: ProcessLaunchInfo,
-                     mode: Union[Literal["preload"], Literal["inject"]],
-                     scripts: Sequence[Path],
-                     code: Optional[Sequence[str]]=None):
+                     inject: InjectFileBuilder,
+                     mode: Sequence[InjectFileBuilder.Context]):
         """ Create a file to be set as bg_script/inject """
-        with NamedTemporaryFile("w", dir=pkg.path, prefix=f"{mode}-", suffix=".js", delete=False) as f:
-        #with proc.temp_file(prefix=f"{mode}-", suffix=".js") as f:
+        with NamedTemporaryFile("w", dir=pkg.path, prefix=f"{'-'.join(mode)}-", suffix=".js", delete=False) as f:
             name = os.path.basename(f.name)
-            f.write(f"// Kawariki NW.js {mode} script\n")
-            f.write(f"console.log('[Kawariki] Injected {os.path.basename(f.name)}');\n")
-            if mode == "preload":
-                for script in scripts:
-                    f.write(f"require('{script}');\n")
-            elif mode == "inject":
-                f.write("""(function() {
-                    var head = document.head ? document.head : document.documentElement;
-                    function addScript(path) {
-                        var el = document.createElement("script");
-                        el.type = "text/javascript";
-                        el.src = path;
-                        head.appendChild(el);
-                    }
-                    """)
-                for script in scripts:
-                    escaped = str(script).replace('"', r'\\"')
-                    f.write(f"addScript(\"file://{escaped}\");\n")
-                f.write("})();\n")
-            else:
+            f.write(f"// Kawariki NW.js {' and '.join(mode)} script\n")
+            f.write(f"console.log('[Kawariki] Injecting {name}');\n")
+            try:
+                inject.write(f, mode)
+            except:
                 os.unlink(f.name)
-                raise ValueError("Unknown _inject_file mode")
-            if code:
-                xcode = ";\n  ".join(code)
-                f.write(f"(function() {{\n  {xcode};\n}})();\n")
+                raise
             proc.at_cleanup(lambda: os.unlink(f.name))
             return name
 
@@ -301,39 +510,34 @@ class Runtime(IRuntime):
         else:
             print("Warning: overlayns not supported or explicitly disabled. Greenworks integration disabled.")
 
-        # TODO: make configurable
-        bg_scripts: List[Path] = []
-        inject_scripts: List[Path] = []
-        code: List[str] = []
+        # TODO: make all this configurable
         conf = pkg.read_json()
 
-        # Try to use modern JS: ES2022/ES13 supported since Chromium 94/NW.js 0.57
+        inject = InjectFileBuilder(self, nwjs)
+        inject._missing = lambda path: print(f"Note: Script {path.name} not found. "
+                                             f"It may not be compatible with NW.js v{nwjs.version_str}")
+
         js = self.base_path / 'js'
-        es_version = "es5" if nwjs.version < (0, 57) else "es13"
-        ts = js / es_version
-
-        def inject_script(path: Path, *, target=inject_scripts):
-            if path.exists():
-                target.append(path)
-            else:
-                print(f"Note: Script '{path.name}' isn't available with NW.js version {nwjs.version_str}")
-
-        inject_script(js / "case-insensitive-nw.js", target=bg_scripts)
+        inject.require(js / 'case-insensitive-nw.js')
 
         if game.rpgmaker_release in ("MV", "MZ"):
             # Disable this if we can detect a rmmv  plugin that provides remapping?
-            inject_script(ts / "rpg-remap.js")
-            inject_script(ts / "rpg-vars.js")
+            inject.script("rpg-remap.js")
             if os.environ.get("KAWARIKI_NWJS_RPG_DECRYPTED_ASSETS"):
                 if game.is_rpgmaker_mv_legacy or game.rpgmaker_release not in ("MV", "MZ"):
                     self.app.show_warn("RPGMaker version isn't supported for KAWARIKI_NWJS_RPG_DECRYPTED_ASSETS")
                 else:
-                    inject_script(js / f"{game.rpgmaker_release.lower()}-decrypted-assets.js")
+                    inject.script(js / f"{game.rpgmaker_release.lower()}-decrypted-assets.js")
 
         # User scripts
-        for userscript in pkg.enclosing_directory.glob("*.kawariki.js"):
+        userscript_dir = pkg.enclosing_directory.absolute()
+        inject.map('$kawariki:pkgparent/', userscript_dir)
+        for userscript in userscript_dir.glob("*.kawariki.*js"):
             print(f"Found UserScript {userscript}")
-            inject_scripts.append(userscript.absolute())
+            inject.script(userscript)
+        for userscript in userscript_dir.glob("*.kawariki.mjs"):
+            print(f"Found UserScript {userscript}")
+            inject.module(userscript)
 
         # Patch Tyrano builder https://github.com/ShikemokuMK/tyranoscript/issues/87
         if game.tyrano_version is not None:
@@ -358,24 +562,24 @@ class Runtime(IRuntime):
                             conf["name"] = html[start:end]
 
         if os.environ.get("KAWARIKI_NWJS_DEVTOOLS"):
-            code.append("""(typeof nw !== "undefined"? nw : require("nw.gui")).Window.get().showDevTools()""")
-
-        if os.environ.get("KAWARIKI_NWJS_INJECT_BG"):
-            inject_scripts = [*bg_scripts, *inject_scripts]
-            bg_scripts = []
+            inject.eval("""(typeof nw !== "undefined"? nw : require("nw.gui")).Window.get().showDevTools()""")
 
         # Patch package json
         if nwjs.version >= (0, 19):
-            if bg_scripts:
-                conf['bg-script'] = self._inject_file(pkg, proc, "preload", bg_scripts)
-            if inject_scripts or code:
-                conf['inject_js_start'] = self._inject_file(pkg, proc, "inject", inject_scripts, code=code)
+            def add_pkg_script(key: str, contexts: Sequence[InjectFileBuilder.Context]):
+                if inject.has_scripts_for(contexts):
+                    conf[key] = self._inject_file(pkg, proc, inject, contexts)
+            if os.environ.get("KAWARIKI_NWJS_INJECT_BG"):
+                add_pkg_script("inject_js_start", ("inject", "preload"))
+            else:
+                add_pkg_script("inject_js_start", ("inject",))
+                add_pkg_script("bg_script", ("preload",))
         else:
-            if bg_scripts or inject_scripts or code:
+            if inject:
                 #modify main.html
                 with open(pkg.path / conf["main"]) as f:
                     html = f.read()
-                fn = self._inject_file(pkg, proc, "inject", bg_scripts + inject_scripts, code=code)
+                fn = self._inject_file(pkg, proc, inject, ("inject", "preload"))
                 html = html.replace("<head>", f"""<head><script src="file://{os.path.realpath(fn)}"></script>""")
                 with overlay_or_clobber(pkg, proc, conf["main"]) as f:
                     f.write(html)
