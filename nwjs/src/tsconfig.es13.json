@@ -16,7 +16,7 @@
         "logger.mts",
         "rpg-definitions.d.ts",
         "rpg-inject.mts",
-        "rpg-remap.ts",
+        "rpg-remap.mts",
         "rpg-vars.ts",
     ],
 }

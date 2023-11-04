@@ -523,7 +523,8 @@ class Runtime(IRuntime):
 
         if game.rpgmaker_release in ("MV", "MZ"):
             # Disable this if we can detect a rmmv  plugin that provides remapping?
-            inject.script("rpg-remap.js")
+            inject.module("rpg-remap.mjs")
+            inject.script("rpg-vars.js")
             if os.environ.get("KAWARIKI_NWJS_RPG_DECRYPTED_ASSETS"):
                 if game.is_rpgmaker_mv_legacy or game.rpgmaker_release not in ("MV", "MZ"):
                     self.app.show_warn("RPGMaker version isn't supported for KAWARIKI_NWJS_RPG_DECRYPTED_ASSETS")
