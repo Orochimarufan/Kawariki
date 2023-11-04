@@ -4,6 +4,10 @@
         "module": "None",
         "target": "ES2022",
         "outDir": "../js/es13",
+        "paths": {
+            // Required by @types/node
+            "undici-types": ["../node_modules/undici-types/index.d.ts"],
+        },
     },
     "files": [
         "rpg-definitions.d.ts",
