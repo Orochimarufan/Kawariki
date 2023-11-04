@@ -9,7 +9,11 @@
         "darwin-x86_64": "osx-x64"
     },
     "common": {
-        "name": "NW.js v{version!v} ({platform})",
+        "name_sdk": {
+            "sdk=true": "SDK ",
+            "sdk=false": ""
+        },
+        "name": "NW.js {name_sdk}v{version!v} ({platform})",
         "platforms": ["linux-x64", "linux-ia32", "osx-x64"],
         "binary": {
             "platform=osx-*": "nwjs.app/Contents/MacOS/nwjs",
