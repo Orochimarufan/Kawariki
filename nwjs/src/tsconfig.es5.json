@@ -13,6 +13,7 @@
     },
     "files": [
         "es5-polyfill.mts",
+        "logger.mts",
         "rpg-definitions.d.ts",
         "rpg-remap.ts",
     ],
