@@ -15,6 +15,7 @@
         "es13-polyfill.mts",
         "logger.mts",
         "rpg-definitions.d.ts",
+        "rpg-inject.mts",
         "rpg-remap.ts",
         "rpg-vars.ts",
     ],
