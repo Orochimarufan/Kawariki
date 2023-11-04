@@ -75,7 +75,9 @@ export class Injector {
     private log_event: any;
 
     private dispatch<N extends EventName>(names: N[], detail: EventDetail<N>): void {
-        if (names.length !== 1 || (names[0] !== 'script-added' && names[0] !== 'script-loaded'))
+        // Don't log script- and plugin- events unless the script is being observed
+        const prefix = names[0]?.slice(0, 7);
+        if (names.length !== 1 || (prefix !== 'script-' && prefix !== 'plugin-'))
             this.log_event(names, detail);
         for (const name of names) {
             for (const lner of this.listeners[name] ?? []) {
@@ -90,7 +92,7 @@ export class Injector {
 
     constructor() {
         this.logger = new Logger("RpgInject", {color: "MediumPurple"});
-        this.log_event = this.logger.makeLogFn('info', '%s: %o');
+        this.log_event = this.logger.makeLogFn('info', 'Triggered %s: %o');
         this.listeners = {};
         // Build event list
         const se = Injector.scriptEventName;

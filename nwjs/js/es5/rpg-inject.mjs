@@ -22,7 +22,7 @@ System.register(["./logger.mjs", "$kawariki:es-polyfill"], function (exports_1, 
                 function Injector() {
                     var _this = this;
                     this.logger = new logger_mjs_1.Logger("RpgInject", { color: "MediumPurple" });
-                    this.log_event = this.logger.makeLogFn('info', '%s: %o');
+                    this.log_event = this.logger.makeLogFn('info', 'Triggered %s: %o');
                     this.listeners = {};
                     var se = Injector.scriptEventName;
                     this.scripts = Injector.defaultScripts.concat();
@@ -106,13 +106,14 @@ System.register(["./logger.mjs", "$kawariki:es-polyfill"], function (exports_1, 
                     });
                 }
                 Injector.prototype.dispatch = function (names, detail) {
-                    var _a;
-                    if (names.length !== 1 || (names[0] !== 'script-added' && names[0] !== 'script-loaded'))
+                    var _a, _b;
+                    var prefix = (_a = names[0]) === null || _a === void 0 ? void 0 : _a.slice(0, 7);
+                    if (names.length !== 1 || (prefix !== 'script-' && prefix !== 'plugin-'))
                         this.log_event(names, detail);
                     for (var _i = 0, names_1 = names; _i < names_1.length; _i++) {
                         var name_1 = names_1[_i];
-                        for (var _b = 0, _c = (_a = this.listeners[name_1]) !== null && _a !== void 0 ? _a : []; _b < _c.length; _b++) {
-                            var lner = _c[_b];
+                        for (var _c = 0, _d = (_b = this.listeners[name_1]) !== null && _b !== void 0 ? _b : []; _c < _d.length; _c++) {
+                            var lner = _d[_c];
                             lner(detail, this);
                         }
                     }
