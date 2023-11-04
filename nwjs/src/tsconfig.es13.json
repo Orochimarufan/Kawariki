@@ -7,12 +7,14 @@
         "paths": {
             // Required by @types/node
             "undici-types": ["../node_modules/undici-types/index.d.ts"],
+            "$kawariki:es-polyfill": ["./es13-polyfill.mts", "../js/es13/es13-polyfill.mjs"],
             "$kawariki:es/": ["./", "../js/es13/"],
         },
     },
     "files": [
+        "es13-polyfill.mts",
         "rpg-definitions.d.ts",
         "rpg-remap.ts",
         "rpg-vars.ts",
-    ]
+    ],
 }

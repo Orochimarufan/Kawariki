@@ -98,6 +98,7 @@ class InjectFileBuilder:
 
         self.scripts = []
         self.importmap = {
+            "$kawariki:es-polyfill": self.es_path / f"{self.es_tag}-polyfill.mjs",
             "$kawariki:es/": self.es_path,
         }
         self.importmap_r = {p: k for k, p in self.importmap.items()}
