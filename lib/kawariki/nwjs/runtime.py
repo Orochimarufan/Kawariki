@@ -222,7 +222,7 @@ class InjectFileBuilder:
         self.scripts.append({
             "context": context,
             "type": "require",
-            "src": f"file://{path}"
+            "src": str(path),
         })
 
     def eval(self, source: str, context: Sequence[Context]=("inject",)):
@@ -620,6 +620,14 @@ class Runtime(IRuntime):
 
         # === Patch some game files ===
         self.overlay_files(game, pkg, nwjs, proc)
+
+        # Custom overlays
+        ons = pkg.enclosing_directory / "kawariki.overlayns"
+        if ons.exists():
+            if not proc.have_overlayns:
+                self.app.show_warn("Found kawariki.overlayns file but overlayns isn't available")
+            else:
+                proc.add_overlays_from_file(ons)
 
         # === Execute ===
         print(f"Running {proc.argv_join()} in {game.root}")

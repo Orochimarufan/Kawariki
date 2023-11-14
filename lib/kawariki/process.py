@@ -84,6 +84,15 @@ class ProcessEnvironment:
         with path.open(mode) as f:
             yield f
 
+    def add_overlays_from_file(self, path: Path):
+        """ Add overlay mounts from file. Every line is a -m option """
+        with path.open() as f:
+            for line in f.readlines():
+                line = line.strip()
+                if line:
+                    self._overlayns.append("-m")
+                    self._overlayns.append(line)
+
     # Temporary files
     @cached_property
     def _tempdir(self) -> TemporaryDirectory:
