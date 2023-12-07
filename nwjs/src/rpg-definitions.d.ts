@@ -87,7 +87,7 @@ interface UtilsMZ extends UtilsCommon {
     canPlayOgg(): boolean,
     canPlayWebm(): boolean,
     encodeURI(str: string): string,
-    extractFileName(filename: string): string,
+    extractFileName?(filename: string): string,
     escapeHtml(str: string): string,
     containsArabic(str: string): boolean,
     setEncryptionInfo(hasImages: boolean, hasAudio: boolean, key: string): void,

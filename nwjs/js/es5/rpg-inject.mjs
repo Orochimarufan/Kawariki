@@ -61,40 +61,26 @@ System.register(["./logger.mjs", "$kawariki:es-polyfill"], function (exports_1, 
                     });
                     this.on('script-managers-loaded', function (detail) {
                         var self = _this;
-                        if (Utils.RPGMAKER_NAME === "MV") {
-                            PluginManager.setup = function (plugins) {
-                                self.dispatch(['plugins-setup'], { plugins: plugins });
-                                for (var _i = 0, plugins_1 = plugins; _i < plugins_1.length; _i++) {
-                                    var plugin = plugins_1[_i];
-                                    if (plugin.status && !_kawariki_es_polyfill_1.Array.includes(this._scripts, plugin.name)) {
-                                        plugin._filename = plugin.name + ".js";
-                                        self.dispatch(['plugin-setup'], { plugin: plugin });
-                                        this.setParameters(plugin.name, plugin.parameters);
-                                        this.loadScript(plugin._filename);
-                                        this._scripts.push(plugin.name);
-                                        self.dispatch(['plugin-loaded'], { plugin: plugin });
-                                    }
+                        var extractFileName = Utils.RPGMAKER_NAME === "MV"
+                            ? function (name) { return name + ".js"; }
+                            : Utils.extractFileName !== undefined
+                                ? Utils.extractFileName.bind(Utils)
+                                : function (name) { return name; };
+                        PluginManager.setup = function (plugins) {
+                            self.dispatch(['plugins-setup'], { plugins: plugins });
+                            for (var _i = 0, plugins_1 = plugins; _i < plugins_1.length; _i++) {
+                                var plugin = plugins_1[_i];
+                                if (plugin.status && !_kawariki_es_polyfill_1.Array.includes(this._scripts, plugin.name)) {
+                                    plugin._filename = extractFileName(plugin.name);
+                                    self.dispatch(['plugin-setup'], { plugin: plugin });
+                                    this.setParameters(plugin.name, plugin.parameters);
+                                    this.loadScript(plugin._filename);
+                                    this._scripts.push(plugin.name);
+                                    self.dispatch(['plugin-loaded'], { plugin: plugin });
                                 }
-                                self.dispatch(['plugins-loaded'], { plugins: plugins });
-                            };
-                        }
-                        else {
-                            PluginManager.setup = function (plugins) {
-                                self.dispatch(['plugins-setup'], { plugins: plugins });
-                                for (var _i = 0, plugins_2 = plugins; _i < plugins_2.length; _i++) {
-                                    var plugin = plugins_2[_i];
-                                    plugin._filename = Utils.extractFileName(plugin.name);
-                                    if (plugin.status && !_kawariki_es_polyfill_1.Array.includes(this._scripts, plugin._filename)) {
-                                        self.dispatch(['plugin-setup'], { plugin: plugin });
-                                        this.setParameters(plugin.name, plugin.parameters);
-                                        this.loadScript(plugin._filename);
-                                        this._scripts.push(plugin.name);
-                                        self.dispatch(['plugin-loaded'], { plugin: plugin });
-                                    }
-                                }
-                                self.dispatch(['plugins-loaded'], { plugins: plugins });
-                            };
-                        }
+                            }
+                            self.dispatch(['plugins-loaded'], { plugins: plugins });
+                        };
                     });
                     this.on('plugins-loaded', function (detail) {
                         var _run = SceneManager.run;

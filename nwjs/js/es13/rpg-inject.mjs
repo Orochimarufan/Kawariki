@@ -79,38 +79,25 @@ export class Injector {
         });
         this.on('script-managers-loaded', detail => {
             const self = this;
-            if (Utils.RPGMAKER_NAME === "MV") {
-                PluginManager.setup = function (plugins) {
-                    self.dispatch(['plugins-setup'], { plugins });
-                    for (const plugin of plugins) {
-                        if (plugin.status && !_Array.includes(this._scripts, plugin.name)) {
-                            plugin._filename = plugin.name + ".js";
-                            self.dispatch(['plugin-setup'], { plugin });
-                            this.setParameters(plugin.name, plugin.parameters);
-                            this.loadScript(plugin._filename);
-                            this._scripts.push(plugin.name);
-                            self.dispatch(['plugin-loaded'], { plugin });
-                        }
+            const extractFileName = Utils.RPGMAKER_NAME === "MV"
+                ? name => name + ".js"
+                : Utils.extractFileName !== undefined
+                    ? Utils.extractFileName.bind(Utils)
+                    : name => name;
+            PluginManager.setup = function (plugins) {
+                self.dispatch(['plugins-setup'], { plugins });
+                for (const plugin of plugins) {
+                    if (plugin.status && !_Array.includes(this._scripts, plugin.name)) {
+                        plugin._filename = extractFileName(plugin.name);
+                        self.dispatch(['plugin-setup'], { plugin });
+                        this.setParameters(plugin.name, plugin.parameters);
+                        this.loadScript(plugin._filename);
+                        this._scripts.push(plugin.name);
+                        self.dispatch(['plugin-loaded'], { plugin });
                     }
-                    self.dispatch(['plugins-loaded'], { plugins });
-                };
-            }
-            else {
-                PluginManager.setup = function (plugins) {
-                    self.dispatch(['plugins-setup'], { plugins });
-                    for (const plugin of plugins) {
-                        plugin._filename = Utils.extractFileName(plugin.name);
-                        if (plugin.status && !_Array.includes(this._scripts, plugin._filename)) {
-                            self.dispatch(['plugin-setup'], { plugin });
-                            this.setParameters(plugin.name, plugin.parameters);
-                            this.loadScript(plugin._filename);
-                            this._scripts.push(plugin.name);
-                            self.dispatch(['plugin-loaded'], { plugin });
-                        }
-                    }
-                    self.dispatch(['plugins-loaded'], { plugins });
-                };
-            }
+                }
+                self.dispatch(['plugins-loaded'], { plugins });
+            };
         });
         this.on('plugins-loaded', detail => {
             const _run = SceneManager.run;
