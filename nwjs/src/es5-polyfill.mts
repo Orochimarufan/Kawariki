@@ -7,9 +7,9 @@ function extractPrototypeMethod<F>(obj: Function, name: string): any {
     return fn ? fn.call.bind(fn) : undefined;
 }
 
-const _Object = globalThis.Object;
-const _Array = globalThis.Array;
-const _String = globalThis.String;
+const _Object = window.Object;
+const _Array = window.Array;
+const _String = window.String;
 
 export const Object: ObjectUtils = (() => {
     const keys = _Object.keys as <K extends string|number|symbol>(o: Record<K, any>) => K[];

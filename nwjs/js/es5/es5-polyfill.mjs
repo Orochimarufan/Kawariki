@@ -9,9 +9,9 @@ System.register([], function (exports_1, context_1) {
     return {
         setters: [],
         execute: function () {
-            _Object = globalThis.Object;
-            _Array = globalThis.Array;
-            _String = globalThis.String;
+            _Object = window.Object;
+            _Array = window.Array;
+            _String = window.String;
             exports_1("Object", Object = (function () {
                 var _a, _b, _c;
                 var keys = _Object.keys;
