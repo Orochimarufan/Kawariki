@@ -3,7 +3,11 @@ System.register(["$kawariki:es-polyfill", "./rpg-inject.mjs", "./logger.mjs"], f
     var _kawariki_es_polyfill_1, rpg_inject_mjs_1, logger_mjs_1, logger, key, action, map, plugins, keyByCode, hook_vanilla, hooks, initialKeyMap;
     var __moduleName = context_1 && context_1.id;
     function apply_keymapper(kas, mapper) {
-        mapper !== null && mapper !== void 0 ? mapper : (mapper = Input.keyMapper);
+        if (mapper === undefined) {
+            if (typeof Input === "undefined")
+                return;
+            mapper = Input.keyMapper;
+        }
         kas.forEach(function (_a) {
             var _b;
             var keyname = _a[0], act = _a[1];

@@ -164,7 +164,11 @@ const map = {
 export const plugins = {};
 export const keyByCode = _Object.mapEntries(key, ([key, code]) => [code, key]);
 function apply_keymapper(kas, mapper) {
-    mapper ??= Input.keyMapper;
+    if (mapper === undefined) {
+        if (typeof Input === "undefined")
+            return;
+        mapper = Input.keyMapper;
+    }
     kas.forEach(([keyname, act]) => {
         mapper[key[keyname]] = action[act] ?? act;
     });
