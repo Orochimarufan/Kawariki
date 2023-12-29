@@ -534,7 +534,7 @@ class Runtime(IRuntime):
         # User scripts
         userscript_dir = pkg.enclosing_directory.absolute()
         inject.map('$kawariki:pkgparent/', userscript_dir)
-        for userscript in userscript_dir.glob("*.kawariki.*js"):
+        for userscript in userscript_dir.glob("*.kawariki.js"):
             print(f"Found UserScript {userscript}")
             inject.script(userscript)
         for userscript in userscript_dir.glob("*.kawariki.mjs"):
