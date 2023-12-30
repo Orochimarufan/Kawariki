@@ -10,6 +10,7 @@ from typing import Optional, Union
 
 from .misc import DetectedProperty
 from .nwjs.package import PackageNw
+from .renpy.detect import RenpyVersion
 
 __all__ = ["Game"]
 
@@ -115,6 +116,17 @@ class Game:
     # Tyrano Script
     # +-------------------------------------------------+
     tyrano_version = DetectedProperty[Optional[int]](detect)
+
+    # +-------------------------------------------------+
+    # Ren'Py
+    # +-------------------------------------------------+
+    @cached_property
+    def renpy_version(self) -> Optional[RenpyVersion]:
+        return RenpyVersion.find(self.root)
+
+    @property
+    def is_renpy(self) -> bool:
+        return self.renpy_version is not None
 
     # +-------------------------------------------------+
     # Godot

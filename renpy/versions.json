@@ -1,0 +1,29 @@
+{
+    "$schema": "../versions.schema.json",
+    "format": 2,
+    "name": "renpy",
+    "common": {
+        "name": "Ren'Py SDK v{version!v}",
+        "binary": "renpy.sh",
+        "slug": "renpy-sdk-{version!v}-intel",
+        "platforms": ["linux-x86_64", "linux-i686", "darwin-x86_64"],
+        "url": "https://www.renpy.org/dl/{version!v}/renpy-{version!v}-sdk.tar.bz2",
+        "strip_leading": "renpy-"
+    },
+    "versions": [
+        {
+            "alias": ["8", "py3"],
+            "version": [8, 1, 3]
+        },
+        {
+            "version": [8, 0, 3]
+        },
+        {
+            "alias": ["7", "py2"],
+            "version": [7, 6, 3]
+        },
+        {
+            "version": [7, 5, 3]
+        }
+    ]
+}

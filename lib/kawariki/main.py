@@ -220,6 +220,9 @@ def main(app, argv) -> int:
     elif game.is_godot:
         from .godot.runtime import Runtime as GodotRuntime
         runtime = GodotRuntime(app)
+    elif game.is_renpy:
+        from .renpy.runtime import Runtime as RenpyRuntime
+        runtime = RenpyRuntime(app)
     else:
         app.show_error(f"Game is not handled by Kawariki: {game_root}")
         return 22
