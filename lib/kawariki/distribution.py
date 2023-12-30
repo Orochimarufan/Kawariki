@@ -2,14 +2,13 @@ from json import load as json_load
 from pathlib import Path
 from string import Formatter
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, List, Literal, Optional,
-                    Sequence, Tuple, Type, TypedDict, TypeVar, Union, cast, overload)
+                    Sequence, Tuple, TypedDict, TypeVar, Union, cast, overload)
 
 from .misc import version_str
+from .utils.typing import Self
 from .utils.interpolated_chain_map import PatternInterpolatedChainMap
 
 T = TypeVar("T")
-D = TypeVar("D", bound="Distribution")
-DI = TypeVar("DI", bound="DistributionInfo")
 
 
 class DistributionInfo(TypedDict, total=False):
@@ -64,6 +63,8 @@ class DistributionInfoProperty(Generic[T]):
             value = self.convert(value)
         return value
 
+
+DI = TypeVar("DI", bound=DistributionInfo)
 
 class Distribution(Generic[DI]):
     """ Represents a specific distribution of a component
@@ -155,14 +156,14 @@ class Distribution(Generic[DI]):
 
     # Loading from JSON
     @classmethod
-    def load_variants(cls: Type[D], info: DI, dist_path: Path, platform=None,
+    def load_variants(cls, info: DI, dist_path: Path, platform=None,
                       platform_map: Optional[Dict[str, str]]=None,
-                      defaults: Optional[DI]=None) -> Iterable[D]:
+                      defaults: Optional[DI]=None) -> Iterable[Self]:
         """ Allow subclass to synthesize multiple variants from one versions.json entry """
         return (cls(info, dist_path, platform, platform_map, defaults),)
 
     @classmethod
-    def load_data(cls: Type[D], data: DistributionList, dist_path: Path, platform: Optional[str] = None) -> List[D]:
+    def load_data(cls, data: DistributionList, dist_path: Path, platform: Optional[str] = None) -> List[Self]:
         """ Load all distributions from JSON object """
         if data["name"] != dist_path.name:
             raise ValueError(f"Distribution name mismatch: {dist_path} <=> {data['name']}")
@@ -186,7 +187,7 @@ class Distribution(Generic[DI]):
                 for ver in cls.load_variants(i, dist_path, platform, platform_map, common)]
 
     @classmethod
-    def load_json(cls: Type[D], filename: Path, dist_path: Path, platform: Optional[str] = None) -> List[D]:
+    def load_json(cls, filename: Path, dist_path: Path, platform: Optional[str] = None) -> List[Self]:
         """ Load distributions from versions.json file """
         with open(filename, "r", encoding="utf8") as f:
             data = json_load(f)
