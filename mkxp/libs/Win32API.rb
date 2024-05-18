@@ -41,7 +41,7 @@ module Win32API
         end
         WritePrivateProfileString = WritePrivateProfileStringA = ->(appname, keyname, value, filename) do
             Preload.require "PreloadIni.rb"
-            writeIniString filename, appname, keyname, value
+            Preload::Ini.writeIniString filename, appname, keyname, value
         end
     end
 
