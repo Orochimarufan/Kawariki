@@ -36,6 +36,10 @@
     },
     "versions": [
         {
+            "alias": ["87"],
+            "version": [0, 87, 0]
+        },
+        {
             "alias": ["75"],
             "version": [0, 75, 0]
         },

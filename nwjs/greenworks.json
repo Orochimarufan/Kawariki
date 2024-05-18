@@ -1,16 +1,38 @@
 {
     "$schema": "../versions.schema.json",
     "format": 2,
-    "name": "greenworks",
+    "name": "nwjs-greenworks",
     "platforms": {
-        "linux-x86_64": "linux-x64"
+        "linux-x86_64": "linux-x64",
+        "linux-i686": "linux-ia32",
+        "linux-i386": "linux-ia32",
+        "darwin-x86_64": "osx"
     },
     "common": {
         "name": "Greenworks {version!v} for NW.js {nwjs[0]!v} ({platform})",
         "slug": "greenworks-{version!v}-nwjs-{nwjs[0]!v}-{platform}",
-        "platforms": ["linux-x64"]
+        "platforms": ["linux-x64"],
+        "steamworks-platform": {
+            "platform=linux-x64": "linux64",
+            "platform=linux-ia32": "linux32",
+            "platform=osx": "osx"
+        }
     },
     "versions": [
+        {
+            "nwjs": [[0, 83], [0, 84], [0, 85], [0, 86], [0, 87]],
+            "version": [0, 16, 0],
+            "platforms": ["linux-x64", "linux-ia32", "osx"],
+            "urlplatform": {
+                "platform=linux-x64": "linux-64",
+                "platform=linux-ia32": "linux-32",
+                "platform=osx": "osx"
+            },
+            "url": "https://github.com/greenheartgames/greenworks/releases/download/v0.16.0/greenworks-v0.16.0-nw-v0.86.0-{urlplatform}.zip",
+            "strip_leading": false,
+            "steamworks": [1, 59],
+            "steamworks-url": "https://partner.steamgames.com/downloads/steamworks_sdk_159.zip"
+        },
         {
             "nwjs": [[0, 70, 1], [0, 71], [0, 72], [0, 73], [0, 74], [0, 75]],
             "version": [1, 5, 0],

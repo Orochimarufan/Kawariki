@@ -64,6 +64,21 @@ class DistributionInfoProperty(Generic[T]):
         return value
 
 
+class DistributionInfoPropertyOptional(DistributionInfoProperty[T]):
+    @overload
+    def __get__(self, instance: None, owner=None) -> 'DistributionInfoPropertyOptional[T]': ...
+    @overload
+    def __get__(self, instance: object, owner=None) -> Optional[T]: ...
+
+    def __get__(self, instance, owner=None) -> Union[None, T, 'DistributionInfoPropertyOptional[T]']:
+        if instance is None:
+            return self
+        value = instance.info.get(self.key)
+        if value is not None and self.convert is not None:
+            value = self.convert(value)
+        return value
+
+
 DI = TypeVar("DI", bound=DistributionInfo)
 
 class Distribution(Generic[DI]):

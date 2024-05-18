@@ -8,7 +8,7 @@ from tempfile import NamedTemporaryFile
 from typing import IO, Callable, ContextManager, Dict, List, Literal, Optional, Sequence, Tuple, TypedDict, Union
 
 from ..app import App, IRuntime
-from ..distribution import Distribution, DistributionInfo
+from ..distribution import Distribution, DistributionInfo, DistributionInfoProperty, DistributionInfoPropertyOptional
 from ..game import Game
 from ..misc import ErrorCode, copy_unlink, version_str
 from ..process import ProcessLaunchInfo
@@ -63,6 +63,23 @@ class GreenworksDistribution(Distribution):
         """ Check whether this Greenworks distribution works with a specific NW.js version """
         return any(nwjs.version[:len(ver)] == tuple(ver) for ver in self.info["nwjs"])
 
+    steamworks_version = DistributionInfoPropertyOptional[str]("steamworks", version_str)
+    steamworks_url = DistributionInfoPropertyOptional[str]("steamworks-url")
+    steamworks_plaform = DistributionInfoProperty[str]("steamworks-platform")
+
+    def lib_filename(self, libname) -> str:
+        if self.steamworks_plaform.startswith("linux"):
+            return f"lib{libname}.so"
+        if self.steamworks_plaform == "osx":
+            return f"lib{libname}.dylib"
+        if self.steamworks_plaform == "win64":
+            return f"{libname}64.dll"
+        if self.steamworks_plaform == "win32":
+            return f"{libname}.dll"
+        raise RuntimeError(f"Unknown Steamworks platform: {self.steamworks_platform}")
+
+    def is_steamworks_included(self) -> bool:
+        return (self.path / "lib" / self.lib_filename("steam_api")).exists()
 
 def overlay_or_clobber(pkg: PackageNw, proc: ProcessLaunchInfo,
                        filename: str, mode: Literal["a", "w"]="w") -> ContextManager[IO[str]]:
@@ -316,6 +333,7 @@ class Runtime(IRuntime):
         self.overlayns_bin = app.app_root / "overlayns-static"
         self.nwjs_dist_path = app.dist_path / "nwjs"
         self.greenworks_dist_path = app.dist_path / "nwjs-greenworks"
+        self.steamworks_dist_path = app.dist_path / "steamworks"
 
     # +-------------------------------------------------+
     # NW.js versions
@@ -443,12 +461,48 @@ class Runtime(IRuntime):
                                                 self.greenworks_dist_path,
                                                 self.app.platform)
 
-    def get_greenworks(self, nwjs: NWjs) -> Optional[GreenworksDistribution]:
-        """ Select a Greenworks distribution compatible with a NW.js distribution """
+    def try_get_greenworks(self, nwjs: NWjs) -> Optional[GreenworksDistribution]:
+        """ Select and download a Greenworks distribution compatible with a NW.js distribution """
         for gw in self.greenworks_versions:
             if gw.is_compatible(nwjs):
-                return gw
-        return None
+                break
+        else:
+            self.app.show_warn(f"No Greenworks available for NW.js version {nwjs.version_str} ({nwjs.name}). Continuing without Steamworks Support")
+            return None
+        if not gw.available:
+            from ..download import download_dist_progress_archive
+            download_dist_progress_archive(self.app, gw)
+            self.app.show_info(f"Downloaded {gw.name}")
+        if not gw.is_steamworks_included():
+            # Get steamworks
+            if not self.steamworks_dist_path.exists():
+                self.steamworks_dist_path.mkdir()
+            url = gw.info['steamworks-url']
+            filename = url.rsplit('/', 2)[-1]
+            filepath = self.steamworks_dist_path / filename
+            if not filepath.exists():
+                self.app.show_info(dedent(f"""
+                    For Steamworks to function with the Kawariki NW.js runtime,
+                    a matching version of the Steamworks redistributable libraries must be used.
+
+                    Please download Steamworks SDK {version_str(gw.info['steamworks'])} from Valve:
+                    {url}
+
+                    And place it in {self.steamworks_dist_path}, then click OK"""), title="Kawariki Steamworks Support")
+                if not filepath.exists():
+                    self.app.show_error(f"{filename} not found. Continuing without Steamworks Support")
+                    return None
+            # Unpack libs to greenworks dist
+            from ..fs.zip import ZipFs
+            from ..fs.util import copy_from
+            libdir = gw.path / "lib"
+            with ZipFs(filepath) as sw:
+                copy_from(sw.root / "sdk/public/steam/lib" / gw.steamworks_plaform / gw.lib_filename("sdkencryptedappticket"), libdir)
+                copy_from(sw.root / "sdk/redistributable_bin" / gw.steamworks_plaform / gw.lib_filename("steam_api"), libdir)
+            if not gw.is_steamworks_included():
+                self.app.show_error(f"Failed to add Steamworks SDK to {gw.name}. Continuing without Steamworks Support")
+                return None
+        return gw
 
     # +-------------------------------------------------+
     #   Run NW.js for Game
@@ -474,13 +528,9 @@ class Runtime(IRuntime):
     def overlay_greenworks(self, pkg: PackageNw, nwjs: NWjs, proc: ProcessLaunchInfo):
         """ Overlay appropriate Greenworks binaries over package """
         for path in pkg.path.rglob("greenworks.js"):
-            greenworks = self.get_greenworks(nwjs)
+            greenworks = self.try_get_greenworks(nwjs)
             if not greenworks:
-                self.app.show_warn(f"No Greenworks available for NW.js version {nwjs.version_str} ({nwjs.name})")
                 break
-            if not greenworks.available:
-                from ..download import download_dist_progress_tar
-                download_dist_progress_tar(self.app, greenworks)
             print(f"Patching Greenworks at '{path}'")
             ppath = path.parent
             # Just clobber files if we extracted package to temp
@@ -560,7 +610,7 @@ class Runtime(IRuntime):
                     if start >= 0:
                         start += 7
                         end = html.find("</title>", start)
-                        if end >= 0:
+                        if end > start:
                             conf["name"] = html[start:end]
 
         if os.environ.get("KAWARIKI_NWJS_DEVTOOLS"):
@@ -589,9 +639,10 @@ class Runtime(IRuntime):
         with overlay_or_clobber(pkg, proc, pkg.json) as f:
             json.dump(conf, f)
 
-    def run(self, game, arguments: Sequence[str],
+    def run(self, game, arguments: Sequence[str], *,
             nwjs_name: Optional[str]=None, dry=False, sdk: Optional[bool]=None,
-            no_overlayns=False, no_unpack=False) -> int:
+            no_overlayns=False, no_unpack=False,
+            **kwds) -> int:
         if not game.is_nwjs_app:
             raise RuntimeError("Called nwjs.Runtime.run with non-NW.js game")
 
