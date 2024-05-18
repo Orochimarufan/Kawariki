@@ -13,7 +13,7 @@ type VoidEventName = 'boot';
 export type FixedEventName = FixedScriptEventName | PluginsEventName | PluginEventName | VoidEventName;
 
 type ScriptEventTypeName = 'added' | 'loaded';
-type DefaultScriptName = 'core' | 'managers' | 'plugins' | 'main';
+type DefaultScriptName = 'core' | 'managers' | 'objects' | 'plugins' | 'main';
 type SpecificScriptEventName<S extends string, E extends ScriptEventTypeName=ScriptEventTypeName> = `script-${S}-${E}`;
 type DefaultScriptEventName = SpecificScriptEventName<DefaultScriptName>;
 
@@ -51,9 +51,11 @@ export class Injector {
         // RPGMaker MV
         ['js/rpg_core.js', 'core'],
         ['js/rpg_managers.js', 'managers'],
+        ['js/rpg_objects.js', 'objects'],
         // RPGMaker MZ
         ['js/rmmz_core.js', 'core'],
         ['js/rmmz_managers.js', 'managers'],
+        ['js/rmmz_objects.js', 'objects'],
     ];
     private static fixedEvents: FixedEventName[] = [
         'script-added',     // Script added to DOM: {script: HTMLScriptElement}

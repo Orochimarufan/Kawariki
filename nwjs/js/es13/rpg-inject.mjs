@@ -12,8 +12,10 @@ export class Injector {
         ['js/main.js', 'main'],
         ['js/rpg_core.js', 'core'],
         ['js/rpg_managers.js', 'managers'],
+        ['js/rpg_objects.js', 'objects'],
         ['js/rmmz_core.js', 'core'],
         ['js/rmmz_managers.js', 'managers'],
+        ['js/rmmz_objects.js', 'objects'],
     ];
     static fixedEvents = [
         'script-added',

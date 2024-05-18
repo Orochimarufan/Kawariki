@@ -13,7 +13,11 @@ export class Logger {
         this.console = options?.console ?? window.console;
     }
 
-    protected get fparams() {
+    protected get prefix_fmt() {
+        return '%c%s%c';
+    }
+
+    protected get prefix_fparams() {
         return [
             `background-color: ${this.color}; color: white; padding: 0.1rem 0.25rem; border-radius: 4px;`,
             this.name,
@@ -23,8 +27,8 @@ export class Logger {
 
     makeLogFn(level: LogLevel, fmt?: string, ...data: any[]): LogFunction {
         const fn = this.console[level];
-        const xfmt = fmt ? `%c%s%c ${fmt}` : "%c%s%c";
-        return fn.bind.apply(fn, [this.console, xfmt].concat(data, this.fparams));
+        const xfmt = fmt ? `${this.prefix_fmt} ${fmt}` : this.prefix_fmt;
+        return fn.bind.apply(fn, [this.console, xfmt].concat(this.prefix_fparams, data));
     }
 
     private makeMemoFn(level: LogLevel): LogFunction {

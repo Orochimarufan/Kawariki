@@ -12,7 +12,14 @@ System.register([], function (exports_1, context_1) {
                     this.color = (_a = options === null || options === void 0 ? void 0 : options.color) !== null && _a !== void 0 ? _a : 'SeaGreen';
                     this.console = (_b = options === null || options === void 0 ? void 0 : options.console) !== null && _b !== void 0 ? _b : window.console;
                 }
-                Object.defineProperty(Logger.prototype, "fparams", {
+                Object.defineProperty(Logger.prototype, "prefix_fmt", {
+                    get: function () {
+                        return '%c%s%c';
+                    },
+                    enumerable: false,
+                    configurable: true
+                });
+                Object.defineProperty(Logger.prototype, "prefix_fparams", {
                     get: function () {
                         return [
                             "background-color: ".concat(this.color, "; color: white; padding: 0.1rem 0.25rem; border-radius: 4px;"),
@@ -29,8 +36,8 @@ System.register([], function (exports_1, context_1) {
                         data[_i - 2] = arguments[_i];
                     }
                     var fn = this.console[level];
-                    var xfmt = fmt ? "%c%s%c ".concat(fmt) : "%c%s%c";
-                    return fn.bind.apply(fn, [this.console, xfmt].concat(data, this.fparams));
+                    var xfmt = fmt ? "".concat(this.prefix_fmt, " ").concat(fmt) : this.prefix_fmt;
+                    return fn.bind.apply(fn, [this.console, xfmt].concat(this.prefix_fparams, data));
                 };
                 Logger.prototype.makeMemoFn = function (level) {
                     var fn = this.makeLogFn(level);

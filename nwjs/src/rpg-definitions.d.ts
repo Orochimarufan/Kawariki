@@ -113,11 +113,78 @@ declare var $gameVariables: {
 };
 
 // ------------------------------------------------------------------
-// Game logic
+// Game logic/objects
 declare var Game_Troop: {
     prototype: {
         setup(...args: any[]): any,
     },
+};
+
+interface Game_Message {
+    // Methods
+    initialize(): void;
+    clear(): void;
+    add(text: string): void;
+    newPage(): void;
+    onChoice(n: number): void;
+    allText(): string;
+    // Getters
+    choices(): string[];
+    faceName(): string;
+    faceIndex(): number;
+    background(): number;
+    positionType(): number;
+    choiceDefaultType(): number;
+    choiceCancelType(): number;
+    choiceBackground(): number;
+    choicePositionType(): number;
+    numInputVariableId(): number;
+    numInputMaxDigits(): number;
+    itemChoiceVariableId(): number;
+    itemChoiceItypeId(): number;
+    scrollMode(): boolean;
+    scrollSpeed(): number;
+    scrollNoFast(): boolean;
+    // Setters
+    setFaceImage(faceName: string, faceIndex: number): void;
+    setBackground(background: number): void;
+    setPositionType(positionType: number): void;
+    setChoices(choices: string[], defaultType: number, cancelType: number): void;
+    setChoiceBackground(background: number): void;
+    setNumberInput(variableId: number, maxDigits: number): void;
+    setItemChoice(variableId: number, itemType: number): void;
+    setScroll(speed: number, noFast: boolean): void;
+    setChoiceCallback(callback: null): void;
+    // Predicates
+    hasText(): boolean;
+    isChoice(): boolean;
+    isNumberInput(): boolean;
+    isItemChoice(): boolean;
+    isBusy(): boolean;
+    // Members
+    _texts: string[];
+    _choices: string[];
+    _faceName: string;
+    _faceIndex: number;
+    _background: number;
+    _positionType: number;
+    _choiceDefaultType: number;
+    _choiceCancelType: number;
+    _choiceBackground: number;
+    _choicePositionType: number;
+    _numInputVariableId: number;
+    _numInputMaxDigits: number;
+    _itemChoiceVariableId: number;
+    _itemChoiceItypeId: number;
+    _scrollMode: boolean;
+    _scrollSpeed: number;
+    _scrollNoFast: boolean;
+    _choiceCallback: null;
+}
+
+declare var Game_Message: {
+    (): Game_Message,
+    prototype: Game_Message,
 };
 
 
