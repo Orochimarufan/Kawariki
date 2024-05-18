@@ -1,9 +1,13 @@
 # Filesystem Abstraction
 
-from typing import Union, Literal, Iterator, Optional, IO, Protocol, overload, TypeVar
-from pathlib import PurePosixPath, PurePath as PureNativePath
-from os import PathLike as PathLike, fspath
 from abc import ABC, abstractmethod
+from os import PathLike, fspath
+from pathlib import Path as OsPath
+from pathlib import PurePath as PureNativePath
+from pathlib import PurePosixPath
+from typing import IO, Iterator, Literal, Optional, Protocol, TypeVar, Union, overload
+
+from ..utils.typing import override
 
 __all__ = ["AnyPath", "Entry", "Fs", "PurePath", "Path", "string_path"]
 
@@ -82,6 +86,9 @@ class Fs(ABC):
         with self.open(path, "rb") as f:
             return f.read()
 
+    def get_os_path(self, path: AnyPath) -> Optional[OsPath]:
+        return None
+
 
 class PurePath(PurePosixPath):
     def __floordiv__(self: _PurePath, other: AnyPath) -> _PurePath:
@@ -105,14 +112,23 @@ class Path(PurePath):
         super().__init__("/", *pathsegments) # type: ignore
         self.fs = fs
 
+    def with_segments(self, *pathsegments: AnyPath) -> 'Path':
+        return Path(self.fs, *pathsegments)
+
     # Relative
     @property
     def pure(self) -> PurePath:
         return PurePath(self)
 
+    @property
+    def os_path(self) -> Optional[OsPath]:
+        return self.fs.get_os_path(self)
+
+    @override
     def as_relative(self) -> PurePath:
         return PurePath(*self.parts[1:])
 
+    @override
     def relative_to(self, *other: AnyPath):
         raise ValueError(f"{__name__}.Path cannot be relative")
 
@@ -138,11 +154,9 @@ class Path(PurePath):
     def open(self, mode: FileModeRO="r", *, encoding=None, errors=None) -> Union[IO[str], IO[bytes]]:
         return self.fs.open(self, mode, encoding=encoding, errors=errors)
 
-    def read_text(self) -> str:
-        with self.open("r") as f:
-            return f.read()
+    def read_text(self, **kwds) -> str:
+        return self.fs.read_text(self, **kwds)
 
     def read_bytes(self) -> bytes:
-        with self.open("rb") as f:
-            return f.read()
+        return self.fs.read_bytes(self)
 

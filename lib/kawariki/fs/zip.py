@@ -1,11 +1,11 @@
-from zipfile import ZipFile, ZipInfo
-from typing import Optional, Iterator, Union, IO, Literal, overload
 from functools import cached_property
-from logging import getLogger
 from io import TextIOWrapper
+from logging import getLogger
+from typing import IO, Iterator, Literal, Optional, Union, overload
+from zipfile import ZipFile, ZipInfo
 
-from . import AnyPath, Fs, PurePath, Path, FileModeRO
-
+from ..utils.typing import override
+from . import AnyPath, FileModeRO, Fs, Path, PurePath
 
 logger = getLogger(__name__)
 
@@ -42,10 +42,12 @@ class ZipFs(Fs):
         else:
             self.zip = ZipFile(path, "r")
 
+    @override
     def close(self):
         self.zip.close()
 
     @cached_property
+    @override
     def reference(self):
         if isinstance(self._path, Path):
             ref = self._path.fs.reference
@@ -77,19 +79,26 @@ class ZipFs(Fs):
             node = node.get(part, {})
         return node
 
+    def get_info(self, path: AnyPath) -> Optional[ZipInfo]:
+        return self.subtree(path).get(None)
+
+    @override
     def exists(self, path: AnyPath) -> bool:
         return len(self.subtree(path)) > 0
 
+    @override
     def is_dir(self, path: AnyPath) -> bool:
         tree = self.subtree(path)
         children = tree.keys() - {None}
         info: Optional[ZipInfo] = tree.get(None)
         return len(children) > 0 or (info is not None and info.is_dir())
 
+    @override
     def is_file(self, path: AnyPath) -> bool:
-        info: Optional[ZipInfo] = self.subtree(path).get(None)
+        info = self.get_info(path)
         return info is not None and not info.is_dir()
 
+    @override
     def scandir(self, path: AnyPath) -> Iterator[ZipEntry]:
         root = Path(self, path)
         tree = self.subtree(path)
@@ -105,12 +114,12 @@ class ZipFs(Fs):
     @overload
     def open(self, path: AnyPath, mode: FileModeRO, *, encoding=None, errors=None) -> Union[IO[str], IO[bytes]]: ...
 
+    @override
     def open(self, path: AnyPath, mode: FileModeRO, *, encoding=None, errors=None) -> Union[IO[str], IO[bytes]]:
-        info: Optional[ZipInfo] = self.subtree(path).get(None)
+        info = self.get_info(path)
         if not info:
             raise FileNotFoundError(path)
         f = self.zip.open(info, "r")
         if mode == "rb":
             return f
         return TextIOWrapper(f, encoding, errors)
-

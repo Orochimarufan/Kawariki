@@ -1,8 +1,8 @@
 from os import DirEntry, scandir
-from pathlib import Path as OsPath
-from typing import Iterator, Union, IO
+from typing import IO, Iterator, Union
 
-from . import AnyPath, Fs, Path, FileModeRO
+from ..utils.typing import override
+from . import AnyPath, FileModeRO, Fs, OsPath, Path
 
 
 class OsEntry:
@@ -31,32 +31,40 @@ class OsFs(Fs):
     def __init__(self, root: AnyPath):
         self.os_root = OsPath(root).resolve()
 
+    @override
     def close(self):
         pass
 
     @property
+    @override
     def reference(self):
         return f"os:{self.os_root}"
 
-    def os_path(self, path: AnyPath) -> OsPath:
+    @override
+    def get_os_path(self, path: AnyPath) -> OsPath:
         path = OsPath(path)
         if path.is_absolute():
             path = path.relative_to("/")
         return self.os_root / path
 
+    @override
     def exists(self, path: AnyPath) -> bool:
-        return self.os_path(path).exists()
+        return self.get_os_path(path).exists()
 
+    @override
     def is_dir(self, path: AnyPath) -> bool:
-        return self.os_path(path).is_dir()
+        return self.get_os_path(path).is_dir()
 
+    @override
     def is_file(self, path: AnyPath) -> bool:
-        return self.os_path(path).is_file()
+        return self.get_os_path(path).is_file()
 
+    @override
     def scandir(self, path) -> Iterator[OsEntry]:
         root = Path(self, path)
-        for de in scandir(self.os_path(path)):
+        for de in scandir(self.get_os_path(path)):
             yield OsEntry(root, de)
 
+    @override
     def open(self, path: AnyPath, mode: FileModeRO, *, encoding=None, errors=None) -> Union[IO[str], IO[bytes]]:
-        return self.os_path(path).open(mode, encoding=encoding, errors=errors)
+        return self.get_os_path(path).open(mode, encoding=encoding, errors=errors)
