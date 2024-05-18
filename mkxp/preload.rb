@@ -48,6 +48,10 @@ module Preload
             (0...@scripts.size).each {|i| yield script i}
         end
 
+        def last_script
+            script (script_count - 1)
+        end
+
         def script_loc(scriptid)
             return script(scriptid).loc
         end
@@ -191,7 +195,11 @@ module Preload
         end
 
         # Extract $imported key only once
-        ImportedKeyExpr = /^\s*\$imported\[(:\w+|'[^']+'|"[^"+]")\]\s*=\s*(.+)\s*$/
+        # $imported['Hello'] = 1
+        # $imported[:Hello] = true
+        # ($imported ||= {})["Hello"] = true
+        # Type (String/Symbol) is preserved
+        ImportedKeyExpr = /^\s*(?:\$imported|\(\s*\$imported(?:\s*\|\|=\s*\{\s*\})?\s*\))\[(:\w+|'[^']+'|"[^"]+")\]\s*=\s*(.+)\s*$/
 
         def _extract_imported
             match = ImportedKeyExpr.match(source)
@@ -441,32 +449,77 @@ module Preload
         end
     end
 
+    # -------------------------------------------------------------------------
+    # Logic
+    # -------------------------------------------------------------------------
     RgssVersionNames = ["Unknown", "XP", "VX", "VX Ace"]
+    @on_preload = []
+    @on_load = []
+    @on_boot = []
+    @ctx = nil
 
-    def self.run
+    def self._run_preload
         # Initialize
-        ctx = Context.new $RGSS_SCRIPTS
+        @ctx = ctx = Context.new $RGSS_SCRIPTS
         ctx.read_system
         ctx.read_env
         print "MKXP mkxp-z #{ctx[:mkxp_version]} RGSS #{ctx[:rgss_version]} (#{RgssVersionNames[ctx[:rgss_version]]})\n"
+        # Run preload hooks
+        @on_preload.each{|p| p.call ctx}
+        ctx.each_script do |script|
+            print "#{script.index} #{script.imported_key}: #{script.name}"
+        end
         # Patch Scripts
         dump_scripts ctx, :dump_scripts_raw
         patch_scripts ctx
         overwrite_redefinitions ctx if ctx.flag? :redefinitions_overwrite_class
         dump_scripts ctx, :dump_scripts_patched
-        # Inject user scripts
-        print $RGSS_SCRIPTS[0]
-        Dir['*.kawariki.rb'].each do |filename|
-            print "Injecting user script #{filename}"
-            ctx.add_script(filename, File.read(filename))
-        end
+        # Try to inject hook after most (plugin) scripts are loaded but before game starts
+        ctx.last_script.source= "Preload._run_boot\n\n" + ctx.last_script.source
         # Done
         if ctx.flag? :dont_run_game then
             print "KAWARIKI_MKXP_DRY_RUN is set, not continuing to game code"
             exit 123
         end
     end
+
+    def self._run_load
+        @on_load.each {|p| p.call @ctx}
+    end
+
+    def self._run_boot
+        @on_boot.each {|p| p.call @ctx}
+    end
+
+    # -------------------------------------------------------------------------
+    # Callbacks for user-scripts
+    # -------------------------------------------------------------------------
+    # Register block to be called with preload context
+    def self.on_preload(&p)
+        @on_preload.push p
+    end
+
+    # Register block to be called after patches are applied
+    def self.on_load(&p)
+        @on_load.push p
+    end
+
+    # Register block to be called on RGSS boot
+    def self.on_boot(&p)
+        @on_boot.push p
+    end
 end
 
+# Ensure Zlib is loaded
+Kernel.require 'zlib' unless Kernel.const_defined? :Zlib
+# Load patch definitions
 Kernel.require File.join(Preload::Path, 'patches.rb')
-Preload.run
+# Inject user scripts
+Dir['*.kawariki.rb'].each do |filename|
+    Preload.print "Loading user script #{filename}"
+    Kernel.require filename
+end
+# Apply patches to scripts
+Preload._run_preload
+# Run load hooks just before control returns to MKXP to run the scripts
+Preload._run_load
