@@ -16,6 +16,10 @@ module Preload
         Patch.new("MOG_Anti_Lag: Fix visible type error")
             .imported?(:mog_anti_lag)
             .sub!("self.visible = @character.can_update", "self.visible = !!@character.can_update"),
+        Patch.new("Galv's Event Pop-Ups: Fix bitmap constructor call")
+            .imported?("Galv_Map_Popups")
+            .match?(/\.font\.shadow\s*=\s*\d+/)
+            .sub!(/\.font\.shadow\s*=\s*\d+/, ".font.shadow = true"),
         Patch.new("Super simple mouse script: Use mkxp mouse API")
             .imported?(nil)
             .include?("SUPER SIMPLE MOUSE SCRIPT")
