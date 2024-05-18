@@ -24,6 +24,7 @@
 __version__ = "2.0a0"
 
 import argparse
+import importlib
 import os
 import pathlib
 import shlex
@@ -98,6 +99,8 @@ def add_common_args(parser: argparse.ArgumentParser, env, *, gamepath=True, nwjs
     if gamepath:
         parser.add_argument("game", type=pathlib.Path,
                             help="Path of the game directory or executable")
+    parser.add_argument("--runtime", choices=("nwjs", "mkxp", "renpy", "godot"), default=env.get("runtime"),
+                        help="Manually select Kawariki runtime")
     if sdk:
         parser.add_argument("-d", "--sdk", action="store_true", default=env.get("sdk"),
                             help="Select a NW.js version with DevTools support")
@@ -169,6 +172,7 @@ def main(app, argv) -> int:
         "nwjs": check_environ("KAWARIKI_NWJS", str),
         "no_overlayns": check_environ("KAWARIKI_NO_OVERLAYNS", env_bool),
         "no_unpack": check_environ("KAWARIKI_NO_UNPACK", env_bool),
+        "runtime": check_environ("KAWARIKI_RUNTIME", str),
     }
 
     args = parse_args(argv, env)
@@ -210,22 +214,24 @@ def main(app, argv) -> int:
             os.environ.update(quirk['environ'])
 
     # Check game type
-    runtime: IRuntime
-    if game.is_nwjs_app:
-        from .nwjs.runtime import Runtime as NwjsRuntime
-        runtime = NwjsRuntime(app)
-    elif game.is_rpgmaker_rgss:
-        from .mkxp.runtime import Runtime as MkxpRuntime
-        runtime = MkxpRuntime(app)
-    elif game.is_godot:
-        from .godot.runtime import Runtime as GodotRuntime
-        runtime = GodotRuntime(app)
-    elif game.is_renpy:
-        from .renpy.runtime import Runtime as RenpyRuntime
-        runtime = RenpyRuntime(app)
-    else:
-        app.show_error(f"Game is not handled by Kawariki: {game_root}")
+    if args.runtime in (None, "auto"):
+        if game.is_nwjs_app:
+            args.runtime = "nwjs"
+        elif game.is_rpgmaker_rgss:
+            args.runtime = "mkxp"
+        elif game.is_godot:
+            args.runtime = "godot"
+        elif game.is_renpy:
+            args.runtime = "renpy"
+        else:
+            app.show_error(f"Couldn't detect Kawariki runtime for game: {game_root}")
+            return 22
+    try:
+        runtime_module = importlib.import_module(f".{args.runtime}.runtime", __package__)
+    except ImportError:
+        app.show_error(f"Could not load runtime '{args.runtime}'")
         return 22
+    runtime: IRuntime = runtime_module.Runtime(app)
 
     if args.action == "run":
         # Ignore --wait for now
