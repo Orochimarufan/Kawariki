@@ -48,7 +48,7 @@ class Runtime(IRuntime):
         return None
 
     # Run
-    def run(self, game: Game, arguments: Sequence[str], *, no_overlayns=False, **kwds):
+    def run(self, game: Game, arguments: Sequence[str], *, no_overlayns=False, renpy_launcher=False, **kwds):
         gamever = game.renpy_version
         if not gamever:
             self.app.show_error("Could not determine Ren'Py engine version")
@@ -68,7 +68,10 @@ class Runtime(IRuntime):
             except ErrorCode as e:
                 return e.code
 
-        proc = ProcessLaunchInfo(self.app, [dist.binary, game.root])
+        if renpy_launcher:
+            proc = ProcessLaunchInfo(self.app, [dist.binary])
+        else:
+            proc = ProcessLaunchInfo(self.app, [dist.binary, game.root])
         proc.workingdir = game.root
 
         proc.exec()

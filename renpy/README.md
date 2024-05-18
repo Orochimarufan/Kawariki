@@ -31,8 +31,13 @@ Ren'Py 8 and later are 64-bit only
 Kawariki needs to detect the version of Ren'Py a game is shipped with. It tries to extract this information from the runtime files (`renpy` and `lib/python*` in a game distribution). Therefore, while these files aren't used when actually running a game, they can't easily be removed (e.g. for saving space)
 
 
+### Live2D Cubism
+For games using [Live2D Cubism][live2d], the proprietary Live2D SDK needs to be installed. This can be done as described in the [Ren'Py Documentation][renpy-docs-live2d]. The correct Ren'Py SDK Launcher can be started using `kawariki run --renpy-launcher <path-to-game-exe>`.
+
 [renpy]: https://renpy.org/
 [python]: https://python.org/
 [pygame]: https://www.pygame.org
+[live2d]: https://www.live2d.com/en/
 [renpy-docs-runsdk]: https://renpy.org/doc/html/raspi.html#running-a-game
 [renpy-docs-build]: https://renpy.org/doc/html/build.html
+[renpy-docs-live2d]: https://www.renpy.org/doc/html/live2d.html

@@ -101,16 +101,22 @@ def add_common_args(parser: argparse.ArgumentParser, env, *, gamepath=True, nwjs
                             help="Path of the game directory or executable")
     parser.add_argument("--runtime", choices=("nwjs", "mkxp", "renpy", "godot"), default=env.get("runtime"),
                         help="Manually select Kawariki runtime")
-    if sdk:
-        parser.add_argument("-d", "--sdk", action="store_true", default=env.get("sdk"),
-                            help="Select a NW.js version with DevTools support")
-    if nwjs:
-        parser.add_argument("--nwjs", default=env.get("nwjs"),
-                            help="Use specified NW.js version from 'nwjs-versions.json'")
-    parser.add_argument("--no-overlayns", action="store_true",
+    parser.add_argument("--no-overlayns", action="store_true", default=env.get("no_overlayns"),
                         help="Don't try to use linux user namespaces")
-    parser.add_argument("--no-unpack", action="store_true",
-                        help="Don't allow unpacking packaged apps to a temporary directory")
+    # NW.js
+    nwjs_ = parser.add_argument_group("NW.js Runtime")
+    if sdk:
+        nwjs_.add_argument("-d", "--sdk", action="store_true", default=env.get("sdk"),
+                           help="Select a NW.js version with DevTools support")
+    if nwjs:
+        nwjs_.add_argument("--nwjs", default=env.get("nwjs"),
+                           help="Use specified NW.js version from 'nwjs-versions.json'")
+    nwjs_.add_argument("--no-unpack", action="store_true",
+                       help="Don't allow unpacking packaged apps to a temporary directory")
+    # Ren'Py
+    renpy = parser.add_argument_group("Ren'Py Runtime")
+    renpy.add_argument("--renpy-launcher", action="store_true",
+                       help="Start Ren'Py Launcher instead of the game")
 
 def parse_args(argv, env):
     # Parse commandline
@@ -238,7 +244,8 @@ def main(app, argv) -> int:
         try:
             return runtime.run(game, args.game_args,
                                nwjs_name=args.nwjs, dry=args.dry, sdk=args.sdk,
-                               no_overlayns=args.no_overlayns, no_unpack=args.no_unpack)
+                               no_overlayns=args.no_overlayns, no_unpack=args.no_unpack,
+                               renpy_launcher=args.renpy_launcher)
         except ErrorCode as e:
             return e.code
     elif args.action == "patch":
