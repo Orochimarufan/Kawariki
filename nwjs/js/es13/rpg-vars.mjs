@@ -1,74 +1,134 @@
-export class Var {
-    static NAMESPACES = {
-        "variable": {
-            "names": () => $dataSystem.variables,
-            "values": () => $gameVariables._data,
-        },
-        "switch": {
-            "names": () => $dataSystem.switches,
-            "values": () => $gameSwitches._data,
+function* filterMapChain(iter, mapper, ...args) {
+    for (const obj of args) {
+        const it = iter(obj);
+        for (const x of it) {
+            const res = mapper(x, obj);
+            if (res !== undefined)
+                yield res;
         }
-    };
+    }
+}
+function* iterNamespaceImpl(names, values) {
+    for (const [i, name] of names.entries()) {
+        const value = values[i];
+        if (name !== '' || (value !== undefined && value !== null))
+            yield [i, name, value];
+    }
+    const offset = names.length;
+    for (const [j, value] of values.slice(offset).entries()) {
+        if (value !== undefined && value !== null)
+            yield [offset + j, '', value];
+    }
+    ;
+}
+export const VARIABLE = {
+    name: "variable",
+    getName(index) {
+        return $dataSystem.variables[index];
+    },
+    read(index) {
+        return $gameVariables._data[index];
+    },
+    write(index, value) {
+        $gameVariables._data[index] = value;
+    },
+    iter() {
+        return iterNamespaceImpl($dataSystem.variables, $gameVariables._data);
+    },
+    iterNames() {
+        return $dataSystem.variables.entries();
+    },
+    iterValues() {
+        return $gameVariables._data.entries();
+    },
+};
+export const SWITCH = {
+    name: "switch",
+    getName(index) {
+        return $dataSystem.switches[index];
+    },
+    read(index) {
+        return $gameSwitches._data[index];
+    },
+    write(index, value) {
+        $gameSwitches._data[index] = value;
+    },
+    iter() {
+        return iterNamespaceImpl($dataSystem.switches, $gameSwitches._data);
+    },
+    iterNames() {
+        return $dataSystem.switches.entries();
+    },
+    iterValues() {
+        return $gameSwitches._data.entries();
+    },
+};
+export const NAMESPACES = {
+    "variable": VARIABLE,
+    "switch": SWITCH,
+};
+function resolveNs(ns) {
+    if (typeof ns === 'string') {
+        const r = NAMESPACES[ns];
+        if (r === undefined)
+            throw new Error(`Unknown namespace key: '${ns}'. Available namespaces are: ${Object.keys(NAMESPACES).join(', ')}`);
+        return r;
+    }
+    return ns;
+}
+const nothing = Symbol();
+export class Var {
     ns;
     id;
     name;
-    _data;
-    lastValue;
-    constructor(ns, id) {
+    value;
+    constructor(ns, id, name, value = nothing) {
         this.ns = ns;
         this.id = id;
-        const space = Var.NAMESPACES[ns];
-        this.name = space.names()[id];
-        this._data = space.values;
-        this.lastValue = this._read();
+        this.name = name ?? ns.getName(id);
+        this.value = value === nothing ? ns.read(id) : value;
     }
-    _read() {
-        return this._data()[this.id];
-    }
-    _write(value) {
-        this._data()[this.id] = value;
+    get lastValue() {
+        return this.value;
     }
     get() {
-        return this.lastValue = this._read();
+        return this.value = this.ns.read(this.id);
+    }
+    peek() {
+        return this.ns.read(this.id);
     }
     set(value) {
-        this._write(this.lastValue = value);
+        this.ns.write(this.id, this.value = value);
     }
     pollChanged() {
-        return this.lastValue !== this._read();
+        return this.value !== this.ns.read(this.id);
     }
     hasChanged() {
-        const new_value = this._read();
-        const changed = this.lastValue !== new_value;
-        this.lastValue = new_value;
+        const new_value = this.ns.read(this.id);
+        const changed = this.value !== new_value;
+        this.value = new_value;
         return changed;
     }
-    static *_fmchain(fn, ...args) {
-        for (let iter of args) {
-            let i = 0;
-            for (let x of iter) {
-                let res = fn(x, i, iter);
-                if (res !== undefined)
-                    yield res;
-            }
-        }
+    toString() {
+        return `${this.ns.name}[${this.name}] = ${this.value}`;
     }
-    static findValue(value) {
-        return VarList.from(this._fmchain((v, i) => (v === value ? new this("variable", i) : undefined), $gameVariables._data));
+    static at(ns, id) {
+        return new this(NAMESPACES[ns], id);
     }
-    static findName(name) {
-        return VarList.from(this._fmchain((n, i, it) => (n.includes(name) ? new this(it === $dataSystem.variables ? "variable" : "switch", i) : undefined), $dataSystem.variables, $dataSystem.switches));
+    static enumerate(...nss) {
+        return VarList.from(filterMapChain(ns => ns.iter(), ([id, name, value], ns) => new this(ns, id, name, value), ...(nss.length ? nss.map(resolveNs) : Object.values(NAMESPACES))));
+    }
+    static findValue(value, ...nss) {
+        return VarList.from(filterMapChain(ns => ns.iterValues(), ([i, v], ns) => (v === value ? new this(ns, i, undefined, v) : undefined), ...(nss.length ? nss.map(resolveNs) : Object.values(NAMESPACES))));
+    }
+    static findName(name, ...nss) {
+        return VarList.from(filterMapChain(ns => ns.iterNames(), ([i, n], ns) => (n.includes(name) ? new this(ns, i, n) : undefined), ...(nss.length ? nss.map(resolveNs) : Object.values(NAMESPACES))));
     }
     static allVariables() {
-        return VarList.from($gameVariables._data
-            .map((_, i) => new this("variable", i)));
+        return this.enumerate(VARIABLE);
     }
     static allSwitches() {
-        return VarList.from($gameSwitches._data
-            .map((_, i) => new this("switch", i)));
-    }
-    toString() {
-        return `[${this.name}] = ${this.get()}`;
+        return this.enumerate(SWITCH);
     }
 }
 export class VarList extends Array {
@@ -94,9 +154,9 @@ export class VarList extends Array {
         return super.from(iter);
     }
     static from_ids(ns, ids) {
-        return this.from(ids.map(i => new Var(ns, i)));
+        const n = resolveNs(ns);
+        return this.from(ids.map(i => new Var(n, i)));
     }
 }
 window.RpgVariable = Var;
-window.RpgVariableList = VarList;
 //# sourceMappingURL=rpg-vars.mjs.map
