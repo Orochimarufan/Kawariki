@@ -1,5 +1,5 @@
+from collections.abc import Sequence
 from functools import cached_property
-from typing import Optional, Sequence
 
 from ..app import App, IRuntime
 from ..distribution import Distribution
@@ -37,7 +37,7 @@ class Runtime(IRuntime):
             self.app.dist_path / "renpy",
             self.app.platform)
 
-    def select_version(self, gamever: RenpyVersion) -> Optional[Distribution]:
+    def select_version(self, gamever: RenpyVersion) -> Distribution|None:
         # Try to match MAJOR.MINOR version if possible, then try latest available for MAJOR
         for granul in (2, 1):
             ggv = gamever.version_info[:granul]
@@ -48,7 +48,8 @@ class Runtime(IRuntime):
         return None
 
     # Run
-    def run(self, game: Game, arguments: Sequence[str], *, no_overlayns=False, renpy_launcher=False, nwjs_name=None, **kwds):
+    def run(self, game: Game, arguments: Sequence[str], *, no_overlayns=False,
+            renpy_launcher=False, nwjs_name=None, **kwds):
         gamever = game.renpy_version
         if not gamever:
             self.app.show_error("Could not determine Ren'Py engine version")
@@ -57,7 +58,7 @@ class Runtime(IRuntime):
         print(f"Found Ren'Py {gamever.version} '{gamever.version_name}'")
         # TODO: Replace nwjs_name with something more generic
         if nwjs_name is not None:
-            gamever.version = tuple(nwjs_name.split('.'))
+            gamever.version = nwjs_name
             print(f"Overridden with Ren'Py {gamever}")
         dist = self.select_version(gamever)
         if not dist:

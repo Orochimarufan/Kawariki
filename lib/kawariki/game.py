@@ -6,7 +6,6 @@ from functools import cached_property
 from os import environ
 from pathlib import Path
 from re import compile as re_compile
-from typing import Optional, Union
 
 from .misc import DetectedProperty
 from .nwjs.package import PackageNw
@@ -17,9 +16,9 @@ __all__ = ["Game"]
 
 class Game:
     root: Path
-    binary_name_hint: Optional[str]
+    binary_name_hint: str|None
 
-    def __init__(self, game_root: Path, binary_name_hint: Optional[str]):
+    def __init__(self, game_root: Path, binary_name_hint: str|None):
         self.root = game_root
         self.binary_name_hint = binary_name_hint
 
@@ -27,7 +26,7 @@ class Game:
     # NW.js
     # +-------------------------------------------------+
     @cached_property
-    def package_nw(self) -> Optional[PackageNw]:
+    def package_nw(self) -> PackageNw|None:
         return PackageNw.find(self.root, self.binary_name_hint)
 
     @property
@@ -91,9 +90,9 @@ class Game:
     # +-------------------------------------------------+
     # RPGMaker
     # +-------------------------------------------------+
-    rpgmaker_release = DetectedProperty[Optional[str]](detect)
-    rpgmaker_version = DetectedProperty[Optional[tuple[Union[int, str], ...]]](detect)
-    rpgmaker_runtime = DetectedProperty[Optional[str]](detect)
+    rpgmaker_release = DetectedProperty[str|None](detect)
+    rpgmaker_version = DetectedProperty[tuple[int|str, ...]|None](detect)
+    rpgmaker_runtime = DetectedProperty[str|None](detect)
 
     @property
     def is_rpgmaker(self) -> bool:
@@ -108,20 +107,20 @@ class Game:
         return self.rpgmaker_release in ("MV", "MZ")
 
     @property
-    def is_rpgmaker_mv_legacy(self) -> Optional[bool]:
+    def is_rpgmaker_mv_legacy(self) -> bool|None:
         # Check for old RPGMaker MV version. Assume missing version means legacy
         return self.rpgmaker_release == "MV" and (self.rpgmaker_version is None or self.rpgmaker_version < (1, 6))
 
     # +-------------------------------------------------+
     # Tyrano Script
     # +-------------------------------------------------+
-    tyrano_version = DetectedProperty[Optional[int]](detect)
+    tyrano_version = DetectedProperty[int|None](detect)
 
     # +-------------------------------------------------+
     # Ren'Py
     # +-------------------------------------------------+
     @cached_property
-    def renpy_version(self) -> Optional[RenpyVersion]:
+    def renpy_version(self) -> RenpyVersion|None:
         return RenpyVersion.find(self.root)
 
     @property
@@ -132,7 +131,7 @@ class Game:
     # Godot
     # +-------------------------------------------------+
     @cached_property
-    def godot_pack(self) -> Optional[Path]:
+    def godot_pack(self) -> Path|None:
         # TODO: support merged exe, heuristics?
         if self.binary_name_hint is None:
             return None
@@ -150,7 +149,7 @@ class Game:
     # Steam meta-information
     # +-------------------------------------------------+
     @cached_property
-    def steam_appid(self) -> Optional[str]:
+    def steam_appid(self) -> str|None:
         if "SteamAppId" in environ:
             return environ["SteamAppId"]
         appid_txt = self.root / "steam_appid.txt"

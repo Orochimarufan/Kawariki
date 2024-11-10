@@ -213,7 +213,7 @@ def main(app, argv) -> int:
         return add_launcher(app, game, args)
 
     # TODO: Do this better. It really shouldn't mess with the global environ
-    quirk = STEAM_QUIRKS.get(game.steam_appid, None)
+    quirk = STEAM_QUIRKS.get(game.steam_appid or "", None)
     if quirk is not None:
         print(f"Using quirks for Steam appid: {game.steam_appid}")
         if 'environ' in quirk:

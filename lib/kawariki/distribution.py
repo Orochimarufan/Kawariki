@@ -1,8 +1,8 @@
+from collections.abc import Callable, Iterable, Sequence
 from json import load as json_load
 from pathlib import Path
 from string import Formatter
-from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, List, Literal, Optional,
-                    Sequence, Tuple, TypedDict, TypeVar, Union, cast, overload)
+from typing import Any, ClassVar, Generic, Literal, TypedDict, TypeVar, cast, overload
 
 from .misc import version_str
 from .utils.typing import Self
@@ -14,19 +14,20 @@ T = TypeVar("T")
 class DistributionInfo(TypedDict, total=False):
     """ Common items in distribution info JSON objects """
     name: str                       # Distribution name
+    slug: str                       # Slug for folder names
     version: Sequence[int]          # Distribution version (required)
     platforms: Sequence[str]        # Compatible platforms
     url: str                        # Download URL (tar archive, required)
     binary: str                     # Binary name
     alias: Sequence[str]            # Aliases for humans
-    strip_leading: Union[str, bool] # Strip leading component from archive filename
+    strip_leading: str|bool         # Strip leading component from archive filename
 
 
 class DistributionList(TypedDict, total=False): # Generic[DI], unsupported w/ TypedDict until 3.11
     """ Root object of versions.json files """
     format: Literal[2]                          # Format version
     name: str                                   # Required; Name of folder inside dist/
-    platforms: Union[List[str], Dict[str, str]] # Bounding set of supported platforms with renames
+    platforms: list[str]|dict[str, str]         # Bounding set of supported platforms with renames
     common: DistributionInfo                    # Default values for all versions
     versions: Sequence[DistributionInfo]        # Required; Version list
 
@@ -35,7 +36,7 @@ class DistributionFormatter(Formatter):
     """ String formatter with additional conversions:
         - !v: Format a version tuple by converting elements to str and joining by .
     """
-    def convert_field(self, value: Any, conversion: str) -> Any:
+    def convert_field(self, value: Any, conversion: str|None) -> Any:
         if conversion == 'v':
             return version_str(value)
         return super().convert_field(value, conversion)
@@ -44,9 +45,9 @@ class DistributionFormatter(Formatter):
 class DistributionInfoProperty(Generic[T]):
     """ Property extracting a key from the .info attribute """
     key: str
-    convert: Optional[Callable[[Any], T]]
+    convert: Callable[[Any], T]|None
 
-    def __init__(self, key: str, convert: Optional[Callable[[Any], T]]=None):
+    def __init__(self, key: str, convert: Callable[[Any], T]|None=None):
         self.key = key
         self.convert = convert
 
@@ -55,7 +56,7 @@ class DistributionInfoProperty(Generic[T]):
     @overload
     def __get__(self, instance: object, owner=None) -> T: ...
 
-    def __get__(self, instance, owner=None) -> Union[T, 'DistributionInfoProperty[T]']:
+    def __get__(self, instance, owner=None) -> T|'DistributionInfoProperty[T]':
         if instance is None:
             return self
         value = instance.info[self.key]
@@ -68,9 +69,9 @@ class DistributionInfoPropertyOptional(DistributionInfoProperty[T]):
     @overload
     def __get__(self, instance: None, owner=None) -> 'DistributionInfoPropertyOptional[T]': ...
     @overload
-    def __get__(self, instance: object, owner=None) -> Optional[T]: ...
+    def __get__(self, instance: object, owner=None) -> T: ...
 
-    def __get__(self, instance, owner=None) -> Union[None, T, 'DistributionInfoPropertyOptional[T]']:
+    def __get__(self, instance, owner=None) -> T|'DistributionInfoPropertyOptional[T]'|None:
         if instance is None:
             return self
         value = instance.info.get(self.key)
@@ -91,8 +92,8 @@ class Distribution(Generic[DI]):
 
     raw: DI
     common: DI
-    computed: Dict[str, str]
-    platform_map: Optional[Dict[str, str]]
+    computed: dict[str, str]
+    platform_map: dict[str, str]|None
 
     defaults: ClassVar[DistributionInfo] = {
         "slug": "{dist_name}-{version!v}-{platform}",
@@ -104,8 +105,8 @@ class Distribution(Generic[DI]):
     formatter = DistributionFormatter()
 
     def __init__(self, info: DI, dist_path: Path, platform=None,
-                 platform_map: Optional[Dict[str, str]]=None,
-                 common: Optional[DI]=None):
+                 platform_map: dict[str, str]|None=None,
+                 common: DI|None=None):
         self.path = dist_path
         self.platform_map = platform_map
 
@@ -118,8 +119,9 @@ class Distribution(Generic[DI]):
         }
 
         # type: ignore
-        self.info = infos = PatternInterpolatedChainMap(computed, info, common, self.defaults,
-                                                        formatter=self.formatter)
+        self.info = infos = PatternInterpolatedChainMap( # type: ignore[assignment] # ChainMap is compatible
+            computed, info, common, self.defaults, # type: ignore[arg-type] # TypedDicts are also dicts
+            formatter=self.formatter)
 
         # Compute distribution platform name
         dist_platform = platform_map[platform] if platform_map and platform else platform
@@ -141,15 +143,15 @@ class Distribution(Generic[DI]):
         self.path = dist_path / self.slug
 
     # Attributes
-    version = DistributionInfoProperty[Tuple[Union[int, str], ...]]("version", tuple)
+    version = DistributionInfoProperty[tuple[int|str, ...]]("version", tuple)
     version_str = DistributionInfoProperty[str]("version", version_str)
     slug = DistributionInfoProperty[str]("slug")
     name = DistributionInfoProperty[str]("name")
     url = DistributionInfoProperty[str]("url")
     platform = DistributionInfoProperty[str]("platform_name")
     dist_platform = DistributionInfoProperty[str]("platform")
-    strip_leading = DistributionInfoProperty[Union[str, bool]]("strip_leading")
-    aliases = DistributionInfoProperty[List[str]]("alias")
+    strip_leading = DistributionInfoProperty[str|bool]("strip_leading")
+    aliases = DistributionInfoProperty[list[str]]("alias")
 
     @property
     def available(self) -> bool:
@@ -172,13 +174,13 @@ class Distribution(Generic[DI]):
     # Loading from JSON
     @classmethod
     def load_variants(cls, info: DI, dist_path: Path, platform=None,
-                      platform_map: Optional[Dict[str, str]]=None,
-                      defaults: Optional[DI]=None) -> Iterable[Self]:
+                      platform_map: dict[str, str]|None=None,
+                      defaults: DI|None=None) -> Iterable[Self]:
         """ Allow subclass to synthesize multiple variants from one versions.json entry """
         return (cls(info, dist_path, platform, platform_map, defaults),)
 
     @classmethod
-    def load_data(cls, data: DistributionList, dist_path: Path, platform: Optional[str] = None) -> List[Self]:
+    def load_data(cls, data: DistributionList, dist_path: Path, platform: str|None = None) -> list[Self]:
         """ Load all distributions from JSON object """
         if data["name"] != dist_path.name:
             raise ValueError(f"Distribution name mismatch: {dist_path} <=> {data['name']}")
@@ -202,7 +204,7 @@ class Distribution(Generic[DI]):
                 for ver in cls.load_variants(i, dist_path, platform, platform_map, common)]
 
     @classmethod
-    def load_json(cls, filename: Path, dist_path: Path, platform: Optional[str] = None) -> List[Self]:
+    def load_json(cls, filename: Path, dist_path: Path, platform: str|None = None) -> list[Self]:
         """ Load distributions from versions.json file """
         with open(filename, "r", encoding="utf8") as f:
             data = json_load(f)

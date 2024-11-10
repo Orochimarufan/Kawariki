@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from functools import cached_property
 from os import chdir, environ, execve
@@ -9,14 +10,13 @@ from shutil import copy, copyfileobj
 from subprocess import call
 from sys import stderr, stdout
 from tempfile import NamedTemporaryFile, TemporaryDirectory, mkdtemp
-from typing import (Any, BinaryIO, Callable, IO, Iterator, List, Literal,
-                    NoReturn, Optional, Sequence, TextIO, Union, overload)
+from typing import Any, BinaryIO, IO, Literal, NoReturn, TextIO, overload
 from warnings import warn
 
 from .app import App
 from .utils.exceptiongroup import ExceptionGroup, format_exception
 
-PathLike = Union[str, PurePath]
+PathLike = str|PurePath
 
 
 class CleanupErrors(ExceptionGroup):
@@ -26,13 +26,13 @@ class CleanupErrors(ExceptionGroup):
 class ProcessEnvironment:
     """ Environment to launch processes in """
     app: App
-    argv_prepend: List[str]
+    argv_prepend: list[str]
     environ: dict[str, str]
-    workingdir: Optional[PathLike]
+    workingdir: PathLike|None
     have_overlayns: bool
 
-    _overlayns: List[str]
-    _cleanups: List[Callable[[], Any]]
+    _overlayns: list[str]
+    _cleanups: list[Callable[[], Any]]
 
     def __init__(self, app: App, *, no_overlayns=False):
         self.app = app
@@ -101,27 +101,27 @@ class ProcessEnvironment:
         self._cleanups.append(tempdir.cleanup)
         return tempdir
 
-    def temp_dir(self, suffix: Optional[str] = None, prefix: Optional[str] = None) -> str:
+    def temp_dir(self, suffix: str|None=None, prefix: str|None=None) -> str:
         """ Create a temporary directory that will be removed on cleanup() """
         return mkdtemp(suffix, prefix, self._tempdir.name)
 
     @overload
-    def temp_file(self, mode: Union[Literal['w'], Literal['w+']] = "w",
-                  buffering: int = -1, encoding: Optional[str] = None, newline: Optional[str] = None,
-                  suffix: Optional[str] = None, prefix: Optional[str] = None, delete=False, **kwds) -> TextIO:
+    def temp_file(self, mode: Literal['w', 'w+']="w",
+                  buffering: int=-1, encoding: str|None=None, newline: str|None=None,
+                  suffix: str|None=None, prefix: str|None=None, delete=False, **kwds) -> TextIO:
         ...
 
     @overload
-    def temp_file(self, mode: Union[Literal['wb'], Literal['w+b']],
-                  buffering: int = -1, encoding: Optional[str] = None, newline: Optional[str] = None,
-                  suffix: Optional[str] = None, prefix: Optional[str] = None, delete=False, **kwds) -> BinaryIO:
+    def temp_file(self, mode: Literal['wb', 'w+b'],
+                  buffering: int=-1, encoding: str|None=None, newline: str|None=None,
+                  suffix: str|None=None, prefix: str|None=None, delete=False, **kwds) -> BinaryIO:
         ...
 
-    def temp_file(self, mode: Union[Literal['w'], Literal['w+'], Literal['wb'], Literal['w+b']] = "w",
-                  buffering: int = -1, encoding: Optional[str] = None, newline: Optional[str] = None,
-                  suffix: Optional[str] = None, prefix: Optional[str] = None, delete=False, **kwds) -> IO[Any]:
+    def temp_file(self, mode: Literal['w', 'w+', 'wb', 'w+b']="w",
+                  buffering: int=-1, encoding: str|None=None, newline: str|None=None,
+                  suffix: str|None=None, prefix: str|None=None, delete=False, **kwds) -> IO[Any]:
         """ Create a temporary file that will be removed on cleanup() """
-        return NamedTemporaryFile(mode,
+        return NamedTemporaryFile(mode,  # noqa: SIM115 # Caller should use context manager
                                   buffering, encoding, newline,
                                   suffix, prefix, self._tempdir.name,
                                   delete, **kwds)
@@ -162,7 +162,7 @@ class ProcessEnvironment:
 class ProcessLaunchInfo(ProcessEnvironment):
     """ Collects information needed to execute a process """
 
-    argv: List[PathLike]
+    argv: list[PathLike]
 
     def __init__(self, app: App, argv: Sequence[PathLike], *, no_overlayns=False):
         super().__init__(app, no_overlayns=no_overlayns)

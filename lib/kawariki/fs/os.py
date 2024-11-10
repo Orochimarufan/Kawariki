@@ -1,5 +1,6 @@
+from collections.abc import Iterator
 from os import DirEntry, scandir
-from typing import IO, Iterator, Union
+from typing import IO
 
 from ..utils.typing import override
 from . import AnyPath, FileModeRO, Fs, OsPath, Path
@@ -66,5 +67,5 @@ class OsFs(Fs):
             yield OsEntry(root, de)
 
     @override
-    def open(self, path: AnyPath, mode: FileModeRO, *, encoding=None, errors=None) -> Union[IO[str], IO[bytes]]:
+    def open(self, path: AnyPath, mode: FileModeRO, *, encoding=None, errors=None) -> IO[str] | IO[bytes]:
         return self.get_os_path(path).open(mode, encoding=encoding, errors=errors)

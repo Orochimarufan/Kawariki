@@ -2,18 +2,21 @@
 #   Misc. utilities
 # :---------------------------------------------------------------------------:
 
+from collections.abc import Sequence
 from errno import EXDEV
 from os import link, unlink
 from os.path import exists
 from shlex import join as shlex_join
 from shutil import copy2
 from textwrap import dedent
-from typing import Generic, Sequence, TypeVar, Union, overload
+from typing import Generic, TypeVar, overload
 
 T = TypeVar("T")
 
 
-def version_str(ver: Sequence[Union[str, int]]):
+def version_str(ver: Sequence[str|int]):
+    if isinstance(ver[-1], str):
+        return '.'.join(map(str, ver[:-1])) + ver[-1]
     return '.'.join(map(str, ver))
 
 def size_str(size: int):
@@ -86,7 +89,7 @@ class DetectedProperty(Generic[T]):
     @overload
     def __get__(self, instance: object, owner=None) -> T: ...
 
-    def __get__(self, instance, owner=None) -> Union[T, 'DetectedProperty[T]']:
+    def __get__(self, instance, owner=None) -> T|'DetectedProperty[T]':
         if instance is None:
             return self
         self.func(instance)

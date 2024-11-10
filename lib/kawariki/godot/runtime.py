@@ -2,8 +2,7 @@
 #   Godot runtime
 # :---------------------------------------------------------------------------:
 
-from pathlib import Path
-from typing import Any, Dict, Sequence, Literal, Optional
+from collections.abc import Sequence
 from functools import cached_property
 
 from ..app import App, IRuntime
@@ -40,7 +39,7 @@ class Runtime(IRuntime):
 
     @cached_property
     def versions(self) -> Sequence[GodotDistro]:
-        return GodotDistro.load_json(self.resources / "versions.json", self.app.dist_path / "godot", self.app.platform, v2=True)
+        return GodotDistro.load_json(self.resources / "versions.json", self.app.dist_path / "godot", self.app.platform)
 
     def select_version(self, filter: Sequence[int] = ()) -> GodotDistro:
         # TODO: Make selectable and such

@@ -1,8 +1,9 @@
+from collections.abc import Sequence
 from functools import cached_property
 from itertools import zip_longest
 from pathlib import Path
 from re import compile as re_compile
-from typing import ClassVar, List, Optional, Sequence, Tuple, Union
+from typing import ClassVar
 
 from ..utils.typing import Self
 
@@ -21,7 +22,7 @@ class RenpyVersion:
     RE_NAM = re_compile(r"version_name\s*=\s*\"([^\"]+)\"")
 
     @staticmethod
-    def _parse_pykv_line(line: str) -> Tuple[Optional[str], Union[str,int,bool]]:
+    def _parse_pykv_line(line: str) -> tuple[str|None, str|int|bool|None]:
         """ vc_version.py is a python module with only top-level variable assignments.
             Try to read it like a simple Key=Value file
         """
@@ -46,13 +47,13 @@ class RenpyVersion:
         return None, None
 
     @classmethod
-    def _guess_version_from_initpy(cls, initpy: Path) -> Tuple[Tuple[int, ...], str]:
+    def _guess_version_from_initpy(cls, initpy: Path) -> tuple[tuple[int, ...], str]:
         # 8.0 and 7.5 share the same python code and contain both version numbers
         # Try to figure it out from the included python library folder
         with initpy.open() as f:
             buf = f.read()
-        tups: List[Sequence[int]] = []
-        nams: List[str] = []
+        tups: list[Sequence[int]] = []
+        nams: list[str] = []
         for m in cls.RE_TUP.finditer(buf):
             tups.append(tuple(int(d.strip()) for d in m.group(1).split(',')))
         for m in cls.RE_NAM.finditer(buf):
@@ -62,6 +63,7 @@ class RenpyVersion:
             for t, n in zip_longest(tups, nams, fillvalue=""):
                 if not t:
                     break
+                t = tuple(int(x) for x in t)
                 if is_py3 == (t[0] >= 8):
                     return t, n
         return (), ""
@@ -71,7 +73,7 @@ class RenpyVersion:
             with vc_version.open() as f:
                 for line in f:
                     k, v = self._parse_pykv_line(line)
-                    if k in self.KEYS:
+                    if k and k in self.KEYS:
                         setattr(self, k, v)
             # vc_version is only included as the last component of version in 8.1+
             if self.vc_version == 0:
@@ -99,7 +101,7 @@ class RenpyVersion:
         return self.version_info[0] >= 8
 
     @staticmethod
-    def find_version_file(path: Path) -> Optional[Path]:
+    def find_version_file(path: Path) -> Path|None:
         vc_version = path / "renpy" / "vc_version"
         for ext in (".py", ".pyo", ".pyc"):
             candidate = vc_version.with_suffix(ext)
@@ -108,7 +110,7 @@ class RenpyVersion:
         return None
 
     @classmethod
-    def find(cls, path: Path) -> Optional[Self]:
+    def find(cls, path: Path) -> Self|None:
         if vc_version := cls.find_version_file(path):
             return cls(vc_version)
         return None

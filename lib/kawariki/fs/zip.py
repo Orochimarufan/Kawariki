@@ -1,7 +1,8 @@
+from collections.abc import Iterator
 from functools import cached_property
 from io import TextIOWrapper
 from logging import getLogger
-from typing import IO, Iterator, Literal, Optional, Union, overload
+from typing import IO, Literal, overload
 from zipfile import ZipFile, ZipInfo
 
 from ..utils.typing import override
@@ -19,7 +20,7 @@ class ZipEntry:
         self.subtree = subtree
 
     @property
-    def info(self) -> Optional[ZipInfo]:
+    def info(self) -> ZipInfo | None:
         return self.subtree.get(None)
 
     @property
@@ -79,7 +80,7 @@ class ZipFs(Fs):
             node = node.get(part, {})
         return node
 
-    def get_info(self, path: AnyPath) -> Optional[ZipInfo]:
+    def get_info(self, path: AnyPath) -> ZipInfo | None:
         return self.subtree(path).get(None)
 
     @override
@@ -90,7 +91,7 @@ class ZipFs(Fs):
     def is_dir(self, path: AnyPath) -> bool:
         tree = self.subtree(path)
         children = tree.keys() - {None}
-        info: Optional[ZipInfo] = tree.get(None)
+        info: ZipInfo | None = tree.get(None)
         return len(children) > 0 or (info is not None and info.is_dir())
 
     @override
@@ -112,10 +113,10 @@ class ZipFs(Fs):
     @overload
     def open(self, path: AnyPath, mode: Literal["rb"]) -> IO[bytes]: ...
     @overload
-    def open(self, path: AnyPath, mode: FileModeRO, *, encoding=None, errors=None) -> Union[IO[str], IO[bytes]]: ...
+    def open(self, path: AnyPath, mode: FileModeRO, *, encoding=None, errors=None) -> IO[str] | IO[bytes]: ...
 
     @override
-    def open(self, path: AnyPath, mode: FileModeRO, *, encoding=None, errors=None) -> Union[IO[str], IO[bytes]]:
+    def open(self, path: AnyPath, mode: FileModeRO, *, encoding=None, errors=None) -> IO[str] | IO[bytes]:
         info = self.get_info(path)
         if not info:
             raise FileNotFoundError(path)

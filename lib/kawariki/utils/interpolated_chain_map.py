@@ -1,8 +1,9 @@
+from collections.abc import Mapping
 from fnmatch import fnmatchcase
 from functools import cached_property
 from re import compile as re_compile
 from string import Formatter
-from typing import Dict, Generic, List, Optional, Set, TypeVar
+from typing import TypeVar
 
 T = TypeVar("T")
 
@@ -11,26 +12,26 @@ class InterpolationError(LookupError):
     pass
 
 
-class InterpolatedChainMap(Generic[T]):
+class InterpolatedChainMap(Mapping[str, T]):
     """ Read-only chain map with lazy (recursive) string interpolation """
-    _maps: List[Dict[str, T]]
-    _cache: Dict[str, T]
-    _formatter: Optional[Formatter]
+    _maps: list[dict[str, T]]
+    _cache: dict[str, T]
+    _formatter: Formatter|None
 
-    def __init__(self, *maps: Dict[str, T], formatter: Optional[Formatter]=None):
+    def __init__(self, *maps: dict[str, T], formatter: Formatter|None=None):
         self._maps = list(maps)
         self._cache = {}
         self._formatter = formatter
 
     @cached_property
-    def _keys(self) -> Set[str]:
+    def _keys(self) -> set[str]:
         return set().union(*self._maps)
 
     def _invalidate(self):
         self._cache.clear()
         del self._keys
 
-    def prepend(self, map: Dict[str, T]):
+    def prepend(self, map: dict[str, T]):
         self._maps.insert(0, map)
         self._invalidate()
 
@@ -46,13 +47,13 @@ class InterpolatedChainMap(Generic[T]):
         if isinstance(val, str):
             try:
                 return self._formatter.vformat(val, (), self) \
-                    if self._formatter else val.format_map(self)
+                    if self._formatter else val.format_map(self) # type: ignore[return-value]
             except KeyError as e:
                 raise InterpolationError(key, f"Missing interpolated key '{e.args[0]}'")
             except ValueError as e:
                 raise InterpolationError(key, *e.args)
         elif isinstance(val, list):
-            return [self._interpolate(key, v) for v in val]
+            return [self._interpolate(key, v) for v in val] # type: ignore[return-value]
         return val
 
     def __getitem__(self, key: str) -> T:
@@ -73,9 +74,6 @@ class InterpolatedChainMap(Generic[T]):
 
     def __len__(self) -> int:
         return len(self._keys)     # reuses stored hash values if possible
-
-    def keys(self) -> List[str]:
-        return list(self._keys)
 
     def __iter__(self):
         return iter(self._keys)

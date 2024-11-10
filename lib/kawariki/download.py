@@ -3,7 +3,8 @@ from pathlib import Path
 from shutil import rmtree
 from tarfile import open as taropen
 from tempfile import NamedTemporaryFile
-from typing import IO, Callable, Optional
+from collections.abc import Callable
+from typing import IO
 from urllib.error import URLError
 from urllib.request import urlopen
 from zipfile import ZipFile
@@ -14,7 +15,7 @@ from .misc import ErrorCode, size_str
 
 
 def download_progress_tar(app: App, url: str, dest: Path, description: str="Downloading file...",
-        *, modify_entry: Optional[Callable]=None):
+        *, modify_entry: Callable|None=None):
     """
     Download and directly extract a tar archive
     :param app: The global app instance
@@ -50,7 +51,7 @@ def download_progress_tar(app: App, url: str, dest: Path, description: str="Down
 
 
 def download_dist_progress_tar(app: App, dist: Distribution):
-    strip_prefix: Optional[Callable]
+    strip_prefix: Callable|None
     if dist.strip_leading is True:
         def strip_prefix(entry):
             try:
@@ -79,7 +80,7 @@ def download_dist_progress_tar(app: App, dist: Distribution):
 def download_progress(app: App, url: str, dest: IO[bytes], description: str="Downloading file...",
         buffer_size: int=16384):
     """
-    Download and directly extract a tar archive
+    Download a file with progress dialog
     :param app: The global app instance
     :param url: The url to download
     :param dest: The destination file object
@@ -109,7 +110,7 @@ def download_progress(app: App, url: str, dest: IO[bytes], description: str="Dow
 
 
 def download_dist_progress_zip(app: App, dist: Distribution):
-    strip_prefix: Optional[Callable]
+    strip_prefix: Callable|None
     if dist.strip_leading is True:
         def strip_prefix(entry):
             try:

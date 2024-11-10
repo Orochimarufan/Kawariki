@@ -4,24 +4,20 @@
 # to the original definition in typing or typing_extensions. Any abstraction
 # may obscure the origin
 
-# typing.Self
-try:
-    from typing import Self
-except ImportError:
+import sys
+
+# typing.Self, typing.override
+if sys.version_info >= (3, 11):
+    from typing import Self, override
+else:
     try:
-        from typing_extensions import Self
+        from typing_extensions import Self, override
     except ImportError:
         from typing import _SpecialForm
-        @_SpecialForm
+
+        @_SpecialForm # type: ignore[call-arg]
         def Self(self, parameters):
             raise TypeError()
 
-# typing.override
-try:
-    from typing import override
-except ImportError:
-    try:
-        from typing_extensions import override
-    except ImportError:
-        def override(_f):
+        def override(_f): # type: ignore[misc]
             return _f

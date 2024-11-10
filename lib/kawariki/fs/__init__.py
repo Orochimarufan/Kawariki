@@ -1,11 +1,12 @@
 # Filesystem Abstraction
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from os import PathLike, fspath
 from pathlib import Path as OsPath
 from pathlib import PurePath as PureNativePath
 from pathlib import PurePosixPath
-from typing import IO, Iterator, Literal, Optional, Protocol, TypeVar, Union, overload
+from typing import IO, Literal, Protocol, TypeVar, overload
 
 from ..utils.typing import override
 
@@ -16,8 +17,8 @@ _Fs = TypeVar("_Fs", bound="Fs")
 _Path = TypeVar("_Path", bound="Path")
 _PurePath = TypeVar("_PurePath", bound="PurePath")
 
-FileModeRO = Union[Literal["r"], Literal["rb"]]
-AnyPath = Union[str, PathLike[str]]
+FileModeRO = Literal["r", "rb"]
+AnyPath = str | PathLike[str]
 
 
 def string_path(path: AnyPath) -> str:
@@ -48,7 +49,7 @@ class Fs(ABC):
 
     # Fs Metadata
     @property
-    def reference(self) -> Optional[str]:
+    def reference(self) -> str | None:
         return None
 
     @property
@@ -73,10 +74,10 @@ class Fs(ABC):
     @overload
     def open(self, path: AnyPath, mode: Literal["rb"]) -> IO[bytes]: ...
     @overload
-    def open(self, path: AnyPath, mode: FileModeRO, *, encoding=None, errors=None) -> Union[IO[str], IO[bytes]]: ...
+    def open(self, path: AnyPath, mode: FileModeRO, *, encoding=None, errors=None) -> IO[str] | IO[bytes]: ...
 
     @abstractmethod
-    def open(self, path: AnyPath, mode: FileModeRO, *, encoding=None, errors=None) -> Union[IO[str], IO[bytes]]: ...
+    def open(self, path: AnyPath, mode: FileModeRO, *, encoding=None, errors=None) -> IO[str] | IO[bytes]: ...
 
     def read_text(self, path: AnyPath, *, encoding=None, errors=None) -> str:
         with self.open(path, "r", encoding=encoding, errors=errors) as f:
@@ -86,7 +87,7 @@ class Fs(ABC):
         with self.open(path, "rb") as f:
             return f.read()
 
-    def get_os_path(self, path: AnyPath) -> Optional[OsPath]:
+    def get_os_path(self, path: AnyPath) -> OsPath | None:
         return None
 
 
@@ -121,7 +122,7 @@ class Path(PurePath):
         return PurePath(self)
 
     @property
-    def os_path(self) -> Optional[OsPath]:
+    def os_path(self) -> OsPath | None:
         return self.fs.get_os_path(self)
 
     @override
@@ -149,9 +150,9 @@ class Path(PurePath):
     @overload
     def open(self, mode: Literal["rb"]) -> IO[bytes]: ...
     @overload
-    def open(self, mode: FileModeRO, *, encoding=None, errors=None) -> Union[IO[str], IO[bytes]]: ...
+    def open(self, mode: FileModeRO, *, encoding=None, errors=None) -> IO[str] | IO[bytes]: ...
 
-    def open(self, mode: FileModeRO="r", *, encoding=None, errors=None) -> Union[IO[str], IO[bytes]]:
+    def open(self, mode: FileModeRO="r", *, encoding=None, errors=None) -> IO[str] | IO[bytes]:
         return self.fs.open(self, mode, encoding=encoding, errors=errors)
 
     def read_text(self, **kwds) -> str:

@@ -3,8 +3,10 @@
 # :---------------------------------------------------------------------------:
 
 import json
+from collections.abc import Sequence
+from contextlib import suppress
 from pathlib import Path
-from typing import Any, Dict, Sequence, Literal
+from typing import Any, Literal
 from functools import cached_property
 
 from ..app import App, IRuntime
@@ -73,20 +75,17 @@ class Runtime(IRuntime):
 
     # Run
     def make_mkxp_config(self, version: MKXP, game: Game) -> str:
-        config: Dict[str, Any] = {}
+        config: dict[str, Any] = {}
 
         # RGSS version
-        try:
+        with suppress(ValueError):
             # This is important for preload to be able to read it from System::CONFIG
             config["rgssVersion"] = ("XP", "VX", "VXAce").index(game.rpgmaker_release)+1
-        except ValueError:
-            pass
 
         # Executable base name
         hint = game.binary_name_hint
-        if hint is not None and hint.lower() not in (".", "game.exe"):
-            if hint.endswith(".exe"):
-                config["execName"] = hint[:-4]
+        if hint is not None and hint.lower() not in (".", "game.exe") and hint.endswith(".exe"):
+            config["execName"] = hint[:-4]
 
         # Load defaults from config file
         def update_from(fpath: Path, *, exclude=frozenset(), merge=True):
@@ -105,7 +104,8 @@ class Runtime(IRuntime):
                             config[k] = v
 
         update_from(game.root / "mkxp.json")
-        update_from(self.mkxp_dir / "mkxp.json", exclude={"rgssVersion", "gameFolder", "iconPath", "customScript", "execName"})
+        update_from(self.mkxp_dir / "mkxp.json",
+            exclude={"rgssVersion", "gameFolder", "iconPath", "customScript", "execName"})
         update_from(game.root / "kawariki-mkxp.json")
 
         # Preload

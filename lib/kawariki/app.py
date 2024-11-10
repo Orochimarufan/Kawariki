@@ -1,10 +1,10 @@
 
 from abc import abstractmethod
+from collections.abc import Sequence
 from functools import cached_property
 from pathlib import Path
 from platform import machine, system
 from sys import stderr
-from typing import Optional, Sequence
 
 from .game import Game
 from .ui import create_gui
@@ -13,7 +13,7 @@ from .ui.common import AKawarikiUi, DummyProgressUi, MsgType
 
 class App:
     app_root: Path
-    overlayns_binary: Optional[Path]
+    overlayns_binary: Path|None
     platform: str
 
     def __init__(self, app_root):
@@ -77,7 +77,8 @@ class IRuntime:
     @abstractmethod
     def run(self, game: Game, arguments: Sequence[str], *,
             nwjs_name=None, dry=False, sdk=None,
-            no_overlayns=False, no_unpack=False) -> int:
+            no_overlayns=False, no_unpack=False,
+            renpy_launcher=False) -> int:
         pass
 
     @abstractmethod

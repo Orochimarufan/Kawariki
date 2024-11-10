@@ -7,7 +7,7 @@ if sys.version_info >= (3, 11):
     from traceback import format_exception as format_exception
 
 else:
-    from typing import Sequence
+    from collections.abc import Sequence
     from traceback import format_exception as format_single_exception
 
     class ExceptionGroup(Exception):
@@ -20,6 +20,6 @@ else:
 
     def format_exception(e: Exception):
         if isinstance(e, ExceptionGroup):
-            parts = "\n\n".join(format_single_exception(ec) for ec in e.exceptions)
+            parts = "\n\n".join("".join(format_single_exception(ec)) for ec in e.exceptions)
             return f"{type(e).__name__}: {e.message}\n\n{parts}"
         return format_single_exception(e)

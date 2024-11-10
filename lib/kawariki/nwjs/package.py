@@ -1,7 +1,7 @@
 
 from json import load as json_load
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 from zipfile import ZipFile, is_zipfile
 
 from ..fs import Fs
@@ -25,10 +25,10 @@ class PackageNw:
     json: str
     is_archive: bool
     may_clobber: bool
-    original: Optional["PackageNw"]
+    original: "PackageNw|None"
 
     def __init__(self, path: Path, json: str, is_archive: bool, *,
-                may_clobber: bool=False, original: Optional["PackageNw"]=None):
+                may_clobber: bool=False, original: "PackageNw|None"=None):
         self.path = path
         self.json = json
         self.is_archive = is_archive
@@ -72,10 +72,9 @@ class PackageNw:
             from ..fs.zip import ZipFs
             return ZipFs(self.path)
 
-    def read_json(self) -> Dict[str, Any]:
-        with self.open_fs() as fs:
-            with fs.open(self.json, "r") as f:
-                return json_load(f)
+    def read_json(self) -> dict[str, Any]:
+        with self.open_fs() as fs, fs.open(self.json, "r") as f:
+            return json_load(f)
 
     # Unpack into directory
     def unarchive(self, target: Path, *, as_temp: bool=False) -> 'PackageNw':
@@ -91,7 +90,7 @@ class PackageNw:
 
     # Find the NW package, if any, in a directory
     @classmethod
-    def find(cls, root: Path, binary_name_hint: Optional[str]=None) -> Optional['PackageNw']:
+    def find(cls, root: Path, binary_name_hint: str|None=None) -> 'PackageNw|None':
         # Plain
         if (pkg := root / "package.json").exists():
             return cls(root, "package.json", False)

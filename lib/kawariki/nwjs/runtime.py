@@ -1,11 +1,13 @@
 import json
 import os
-from contextlib import suppress
+from collections.abc import Callable, Sequence
+from contextlib import AbstractContextManager, suppress
 from functools import cached_property
 from pathlib import Path
+from shlex import split as shlex_split
 from shutil import copytree
 from tempfile import NamedTemporaryFile
-from typing import IO, Callable, ClassVar, ContextManager, Dict, List, Literal, Optional, Sequence, Tuple, TypedDict, Union
+from typing import IO, ClassVar, Literal, TypedDict
 
 from ..app import App, IRuntime
 from ..distribution import Distribution, DistributionInfo, DistributionInfoProperty, DistributionInfoPropertyOptional
@@ -36,15 +38,17 @@ class NWjs(Distribution):
 
     @classmethod
     def load_variants(cls, info: NWjsDistributionInfo, dist_path: Path, platform=None,
-                      platform_map: Optional[Dict[str, str]] = None,
-                      defaults: Optional[NWjsDistributionInfo] = None):
+                      platform_map: dict[str, str]|None=None,
+                      defaults: NWjsDistributionInfo|None=None):
         """ Synthesize sdk and non-sdk variants if sdk=synthesize """
+        infos: Sequence[NWjsDistributionInfo]
         if info.get('sdk', defaults.get('sdk', None) if defaults else None) == "synthesize":
             alias: Sequence[str] = info.get('alias', [])
+            # TypedDict.update seems to have some typing issues
             info_sdk = info.copy()
-            info_sdk.update(sdk=True, alias=[*alias, *(f"{a}-sdk" for a in alias)])
+            info_sdk.update(sdk=True, alias=[*alias, *(f"{a}-sdk" for a in alias)]) #type: ignore[call-arg]
             info_nosdk = info.copy()
-            info_nosdk.update(sdk=False, alias=[*alias, *(f"{a}-nosdk" for a in alias)])
+            info_nosdk.update(sdk=False, alias=[*alias, *(f"{a}-nosdk" for a in alias)]) #type: ignore[call-arg]
             infos = (info_nosdk, info_sdk)
         else:
             infos = (info,)
@@ -56,7 +60,7 @@ class GreenworksDistribution(Distribution):
     info: GreenworksDistInfo
 
     @property
-    def nwjs_version(self) -> Tuple[int, ...]:
+    def nwjs_version(self) -> tuple[int, ...]:
         """ The first compatible NW.js version """
         return tuple(self.info["nwjs"][0])
 
@@ -84,7 +88,7 @@ class GreenworksDistribution(Distribution):
 
 
 def overlay_or_clobber(pkg: PackageNw, proc: ProcessLaunchInfo,
-                       filename: str, mode: Literal["a", "w"]="w") -> ContextManager[IO[str]]:
+                       filename: str, mode: Literal["a", "w"]="w") -> AbstractContextManager[IO[str]]:
     """ Clobber file if pkg.may_clobber, otherwise use proc.replace_file  to overlay """
     path = pkg.path / filename
     if pkg.may_clobber:
@@ -123,9 +127,9 @@ class InjectFileBuilder:
         type: 'InjectFileBuilder.Type'
         src: str
 
-    scripts: List[Script]
-    importmap: Dict[str, Path]
-    importmap_r: Dict[Path, str]
+    scripts: list[Script]
+    importmap: dict[str, Path]
+    importmap_r: dict[Path, str]
 
     _missing: Callable[[Path], None]
 
@@ -215,7 +219,7 @@ class InjectFileBuilder:
     def _notfound_error(self, path: Path):
         raise FileNotFoundError(path)
 
-    def module(self, path: Union[Path, str], context: Sequence[Context]=("inject",)):
+    def module(self, path: Path|str, context: Sequence[Context]=("inject",)):
         """ Inject an ES Module """
         src = None
         if isinstance(path, str):
@@ -241,7 +245,7 @@ class InjectFileBuilder:
         }
 
     #### Legacy Scripts & Code ####
-    def script(self, path: Union[Path, str]):
+    def script(self, path: Path|str):
         """ Inject as script tag (inject only) """
         if isinstance(path, str):
             path = self.es_path / path
@@ -469,7 +473,7 @@ class Runtime(IRuntime):
         """ All compatible distributions of NW.js from versions.json """
         return NWjs.load_json(self.base_path / "versions.json", self.nwjs_dist_path, self.app.platform)
 
-    def get_nwjs(self, version_name: str) -> Optional[NWjs]:
+    def get_nwjs(self, version_name: str) -> NWjs|None:
         """ Get a specific NW.js distribution by alias """
         for ver in self.nwjs_versions:
             if ver.match(version_name):
@@ -477,9 +481,9 @@ class Runtime(IRuntime):
         return None
 
     def get_nwjs_version(self,
-                         minver: Optional[Tuple[int, ...]]=None,
-                         maxver: Optional[Tuple[int, ...]]=None,
-                         sdk: Optional[bool]=None) -> Optional[NWjs]:
+                         minver: tuple[int, ...]|None=None,
+                         maxver: tuple[int, ...]|None=None,
+                         sdk: bool|None=None) -> NWjs|None:
         """
         Get the latest NW.js version available matching the requirements
 
@@ -495,7 +499,7 @@ class Runtime(IRuntime):
             return v[-1]
         return None
 
-    def select_nwjs_version(self, game: Game, nwjs_name: Optional[str]=None, sdk: Optional[bool]=False) -> NWjs:
+    def select_nwjs_version(self, game: Game, nwjs_name: str|None=None, sdk: bool|None=False) -> NWjs:
         """
         Select NW.js distribution suitable for game
 
@@ -565,7 +569,7 @@ class Runtime(IRuntime):
 
         self.app.show_info(f"Finished downloading NW.js distribution '{nwjs.name}'")
 
-    def select_and_download_nwjs(self, game: Game, nwjs_name: Optional[str]=None, sdk: Optional[bool]=False) -> NWjs:
+    def select_and_download_nwjs(self, game: Game, nwjs_name: str|None=None, sdk: bool|None=False) -> NWjs:
         """ Select and then (if needed) download an appropriate NW.js distribution """
         # Select nwjs version
         nwjs = self.select_nwjs_version(game, nwjs_name, sdk)
@@ -587,13 +591,14 @@ class Runtime(IRuntime):
                                                 self.greenworks_dist_path,
                                                 self.app.platform)
 
-    def try_get_greenworks(self, nwjs: NWjs) -> Optional[GreenworksDistribution]:
+    def try_get_greenworks(self, nwjs: NWjs) -> GreenworksDistribution|None:
         """ Select and download a Greenworks distribution compatible with a NW.js distribution """
         for gw in self.greenworks_versions:
             if gw.is_compatible(nwjs):
                 break
         else:
-            self.app.show_warn(f"No Greenworks available for NW.js version {nwjs.version_str} ({nwjs.name}). Continuing without Steamworks Support")
+            self.app.show_warn(f"No Greenworks available for NW.js version {nwjs.version_str} ({nwjs.name})."
+                " Continuing without Steamworks Support")
             return None
         if not gw.available:
             from ..download import download_dist_progress_archive
@@ -623,8 +628,10 @@ class Runtime(IRuntime):
             from ..fs.util import copy_from
             libdir = gw.path / "lib"
             with ZipFs(filepath) as sw:
-                copy_from(sw.root / "sdk/public/steam/lib" / gw.steamworks_platform / gw.lib_filename("sdkencryptedappticket"), libdir)
-                copy_from(sw.root / "sdk/redistributable_bin" / gw.steamworks_platform / gw.lib_filename("steam_api"), libdir)
+                copy_from(sw.root / "sdk/public/steam/lib" / gw.steamworks_platform /
+                    gw.lib_filename("sdkencryptedappticket"), libdir)
+                copy_from(sw.root / "sdk/redistributable_bin" / gw.steamworks_platform /
+                    gw.lib_filename("steam_api"), libdir)
             if not gw.is_steamworks_included():
                 self.app.show_error(f"Failed to add Steamworks SDK to {gw.name}. Continuing without Steamworks Support")
                 return None
@@ -792,7 +799,7 @@ class Runtime(IRuntime):
             json.dump(conf, f)
 
     def run(self, game, arguments: Sequence[str], *,
-            nwjs_name: Optional[str]=None, dry=False, sdk: Optional[bool]=None,
+            nwjs_name: str|None=None, dry=False, sdk: bool|None=None,
             no_overlayns=False, no_unpack=False,
             **kwds) -> int:
         if not game.is_nwjs_app:
