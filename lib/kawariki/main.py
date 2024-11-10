@@ -191,9 +191,9 @@ def main(app, argv) -> int:
 
     print(f"v{__version__}, python {version_str(sys.version_info)}; {shlex.join(argv[1:])}", file=sys.stderr)
 
-    if args.action == "run" and args.game.name == "iscriptevaluator.exe":
+    if args.action == "run" and args.game.name in {"iscriptevaluator.exe", "d3ddriverquery64.exe"}:
         # Skip install scripts.
-        print("Skipping iscriptevaluator.exe invocation", file=sys.stderr)
+        print(f"Skipping {args.game.name} invocation", file=sys.stderr)
         return 0
 
     # Assume backslashes should actually be forward slashes
