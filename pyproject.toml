@@ -5,19 +5,19 @@ authors = [
     { name = "Taeyeon Mori" }
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 
 [tool.pyright]
-pythonVersion = "3.8"
+pythonVersion = "3.10"
 reportTypedDictNotRequiredAccess = false
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 
 [tool.ruff]
 line-length = 120
 indent-width = 4
-target-version = "py38"
+target-version = "py310"
 
 src = ["lib"]
 

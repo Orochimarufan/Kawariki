@@ -27,7 +27,7 @@ import pathlib
 
 
 # Tag and force output to stderr to distinguish from game output
-builtin_print = builtins.original_print = builtins.print
+builtin_print = builtins.print
 
 def print(*messages, **opts):
     if "file" not in opts:
@@ -43,25 +43,28 @@ sys.path.append(str(path / "lib"))
 
 
 # Check python version
-if sys.version_info < (3, 8):
+if not sys.version_info >= (3, 10):
     # functools.cached_property, possibly others
     # Try to provide an easily understood error message instead of failing later
     # This means modules in kawariki.ui should be as backward-compatible as possible.
     from kawariki.ui import create_gui, MsgType
     if gui := create_gui():
-        gui.show_msg(MsgType.Error, "RMMV NW.js Runtime requires more recent Python", f"Python 3.8 or later is required, but currently running:\nPython {sys.version}")
+        gui.show_msg(MsgType.Error, "RMMV NW.js Runtime requires more recent Python",
+            f"Python 3.10 or later is required, but currently running:\nPython {sys.version}")
 
-    raise ImportError("Unsupported python version {}.{}.{}{}{}. At least 3.8 is required.".format(*sys.version_info))
+    raise ImportError("Unsupported python version {}.{}.{}{}{}. At least 3.10 is required.".format(*sys.version_info))
 
 
 # Run
-from kawariki.app import App
-from kawariki.main import main
+from kawariki.app import App  # type: ignore[import-not-found] # noqa: E402
+from kawariki.main import main  # type: ignore[import-not-found] # noqa: E402
+# import-not-found - sys.path is set up above
+# E402 - Needs to be after version check
 
 app = App(path)
 try:
     sys.exit(main(app, sys.argv))
-except Exception as e:
+except Exception:
     import traceback
     app.show_error(traceback.format_exc())
     raise
