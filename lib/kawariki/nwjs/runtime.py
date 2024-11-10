@@ -66,21 +66,22 @@ class GreenworksDistribution(Distribution):
 
     steamworks_version = DistributionInfoPropertyOptional[str]("steamworks", version_str)
     steamworks_url = DistributionInfoPropertyOptional[str]("steamworks-url")
-    steamworks_plaform = DistributionInfoProperty[str]("steamworks-platform")
+    steamworks_platform = DistributionInfoProperty[str]("steamworks-platform")
 
     def lib_filename(self, libname) -> str:
-        if self.steamworks_plaform.startswith("linux"):
+        if self.steamworks_platform.startswith("linux"):
             return f"lib{libname}.so"
-        if self.steamworks_plaform == "osx":
+        if self.steamworks_platform == "osx":
             return f"lib{libname}.dylib"
-        if self.steamworks_plaform == "win64":
+        if self.steamworks_platform == "win64":
             return f"{libname}64.dll"
-        if self.steamworks_plaform == "win32":
+        if self.steamworks_platform == "win32":
             return f"{libname}.dll"
         raise RuntimeError(f"Unknown Steamworks platform: {self.steamworks_platform}")
 
     def is_steamworks_included(self) -> bool:
         return (self.path / "lib" / self.lib_filename("steam_api")).exists()
+
 
 def overlay_or_clobber(pkg: PackageNw, proc: ProcessLaunchInfo,
                        filename: str, mode: Literal["a", "w"]="w") -> ContextManager[IO[str]]:
@@ -622,8 +623,8 @@ class Runtime(IRuntime):
             from ..fs.util import copy_from
             libdir = gw.path / "lib"
             with ZipFs(filepath) as sw:
-                copy_from(sw.root / "sdk/public/steam/lib" / gw.steamworks_plaform / gw.lib_filename("sdkencryptedappticket"), libdir)
-                copy_from(sw.root / "sdk/redistributable_bin" / gw.steamworks_plaform / gw.lib_filename("steam_api"), libdir)
+                copy_from(sw.root / "sdk/public/steam/lib" / gw.steamworks_platform / gw.lib_filename("sdkencryptedappticket"), libdir)
+                copy_from(sw.root / "sdk/redistributable_bin" / gw.steamworks_platform / gw.lib_filename("steam_api"), libdir)
             if not gw.is_steamworks_included():
                 self.app.show_error(f"Failed to add Steamworks SDK to {gw.name}. Continuing without Steamworks Support")
                 return None
