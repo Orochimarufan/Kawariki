@@ -93,6 +93,23 @@ export class Injector {
                 _run.call(this, scene);
             };
         });
+        let timeout;
+        const timeoutcb = () => {
+            const msg = "Timed out trying to inject Kawariki plugins. Reloading with F5 may help.";
+            this.logger.warn(msg);
+            alert(msg);
+            timeout = null;
+        };
+        timeout = window.setTimeout(timeoutcb, 3000);
+        this.on('plugins-setup', () => {
+            window.clearTimeout(timeout);
+            timeout = window.setTimeout(timeoutcb, 30000);
+        });
+        this.on('boot', () => {
+            window.clearTimeout(timeout);
+            timeout = null;
+            this.logger.info("RPGMaker game booted successfully");
+        });
     }
     get eventNames() {
         return this.events;

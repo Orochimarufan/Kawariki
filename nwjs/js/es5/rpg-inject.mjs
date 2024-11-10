@@ -75,6 +75,23 @@ System.register(["./logger.mjs", "$kawariki:es-polyfill", "./scriptobserver.mjs"
                             _run.call(this, scene);
                         };
                     });
+                    var timeout;
+                    var timeoutcb = function () {
+                        var msg = "Timed out trying to inject Kawariki plugins. Reloading with F5 may help.";
+                        _this.logger.warn(msg);
+                        alert(msg);
+                        timeout = null;
+                    };
+                    timeout = window.setTimeout(timeoutcb, 3000);
+                    this.on('plugins-setup', function () {
+                        window.clearTimeout(timeout);
+                        timeout = window.setTimeout(timeoutcb, 30000);
+                    });
+                    this.on('boot', function () {
+                        window.clearTimeout(timeout);
+                        timeout = null;
+                        _this.logger.info("RPGMaker game booted successfully");
+                    });
                 }
                 Injector.prototype.dispatch = function (names, detail) {
                     var _a, _b;
