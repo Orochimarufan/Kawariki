@@ -786,6 +786,8 @@ class Runtime(IRuntime):
                 with overlay_or_clobber(pkg, proc, conf["main"]) as f:
                     f.write(html)
 
+        # Don't disable DevTools
+        conf['chromium-args'] = conf.get('chromium-args', "").replace("--disable-devtools", "")
         with overlay_or_clobber(pkg, proc, pkg.json) as f:
             json.dump(conf, f)
 
