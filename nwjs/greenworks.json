@@ -20,6 +20,20 @@
     },
     "versions": [
         {
+            "nwjs": [[0, 88], [0, 89], [0, 90], [0, 91], [0, 92], [0, 93]],
+            "version": [0, 18, 0],
+            "platforms": ["linux-x64", "linux-ia32", "osx"],
+            "urlplatform": {
+                "platform=linux-x64": "linux-64",
+                "platform=linux-ia32": "linux-32",
+                "platform=osx": "osx"
+            },
+            "url": "https://github.com/greenheartgames/greenworks/releases/download/v{version!v}/greenworks-v{version!v}-nw-v0.92.0-{urlplatform}.zip",
+            "strip_leading": false,
+            "steamworks": [1, 60],
+            "steamworks-url": "https://partner.steamgames.com/downloads/steamworks_sdk_160.zip"
+        },
+        {
             "nwjs": [[0, 83], [0, 84], [0, 85], [0, 86], [0, 87]],
             "version": [0, 16, 0],
             "platforms": ["linux-x64", "linux-ia32", "osx"],
