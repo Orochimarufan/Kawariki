@@ -70,7 +70,13 @@ module Win32API
             return 0
         end
         GetSystemMetrics = ->(index) do
-            return 0 if index == 23 # SM_SWAPBUTTON
+            return Graphics.width if index == 0 # SM_CXSCREEN - Primary screen width
+            return Graphics.height if index == 1 # SM_CYSCREEN - Primary screen height
+            return 0 if index == 4 # SM_CYCAPTION - Height of caption area (title bar?)
+            return 0 if index == 5 # SM_CXBORDER - Width of window borders
+            return 0 if index == 6 # SM_CYBORDER - Height of window borders
+            return 0 if index == 23 # SM_SWAPBUTTON - Swap left/right mouse buttons
+            return 0 if index == 45 # SM_CXEDGE - Width of 3D window borders
             Preload.print("Warning: user32#GetSystemMetrics index #{index} not implemented")
             return 0
         end

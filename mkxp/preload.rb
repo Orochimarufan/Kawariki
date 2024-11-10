@@ -467,7 +467,7 @@ module Preload
         # Run preload hooks
         @on_preload.each{|p| p.call ctx}
         ctx.each_script do |script|
-            print "#{script.index} #{script.imported_key}: #{script.name}"
+            print "Script ##{script.index}: #{script.name}#{"\t[#{script.imported_key}]" if script.imported_key}"
         end
         # Patch Scripts
         dump_scripts ctx, :dump_scripts_raw
