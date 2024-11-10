@@ -12,6 +12,7 @@
         },
     },
     "files": [
+        "scriptobserver.mts",
         "es5-polyfill.mts",
         "logger.mts",
         "rpg-definitions.d.ts",
