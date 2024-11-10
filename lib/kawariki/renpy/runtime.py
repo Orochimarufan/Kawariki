@@ -48,13 +48,17 @@ class Runtime(IRuntime):
         return None
 
     # Run
-    def run(self, game: Game, arguments: Sequence[str], *, no_overlayns=False, renpy_launcher=False, **kwds):
+    def run(self, game: Game, arguments: Sequence[str], *, no_overlayns=False, renpy_launcher=False, nwjs_name=None, **kwds):
         gamever = game.renpy_version
         if not gamever:
             self.app.show_error("Could not determine Ren'Py engine version")
             raise ErrorCode(12)
 
         print(f"Found Ren'Py {gamever.version} '{gamever.version_name}'")
+        # TODO: Replace nwjs_name with something more generic
+        if nwjs_name is not None:
+            gamever.version = tuple(nwjs_name.split('.'))
+            print(f"Overridden with Ren'Py {gamever}")
         dist = self.select_version(gamever)
         if not dist:
             self.app.show_error(f"Could not find compatible Ren'Py SDK for {gamever.version}")
