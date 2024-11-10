@@ -3,6 +3,7 @@
 
 import { Logger } from "./logger.mjs";
 import { Object as _Object, Array as _Array, String as _String } from '$kawariki:es-polyfill';
+import { ScriptObserver, global } from './scriptobserver.mjs';
 
 // -------------------------- Injection Points ----------------------
 export type InjectWhen = 'before'|'after';
@@ -33,14 +34,6 @@ export type EventDetail<Name extends EventName> = (
 
 export type EventHandler<Name extends EventName> = (detail: EventDetail<Name>, target: object) => void;
 
-// -------------------------- DOM Helpers ---------------------------
-function isElement(node: Node): node is Element {
-    return node.nodeType === node.ELEMENT_NODE;
-}
-
-function isScriptElement(node: Node): node is HTMLScriptElement {
-    return isElement(node) && node.tagName === "SCRIPT";
-}
 
 // -------------------------- Implementation ------------------------
 export class Injector {
@@ -69,7 +62,7 @@ export class Injector {
         'boot',             // Just before SceneManager.run called
     ];
 
-    private observer: MutationObserver;
+    private observer: ScriptObserver;
     private scripts: [string, string][];
     private events: EventName[];
     private listeners: {[Name in EventName]?: EventHandler<Name>[]};
@@ -92,9 +85,9 @@ export class Injector {
         return `script-${scriptname}-${type}`;
     }
 
-    constructor() {
+    constructor(observer: ScriptObserver) {
         this.logger = new Logger("RpgInject", {color: "MediumPurple"});
-        this.log_event = this.logger.makeLogFn('info', 'Triggered %s: %o');
+        this.log_event = this.logger.makeLogFn('debug', 'Triggered %s: %o');
         this.listeners = {};
         // Build event list
         const se = Injector.scriptEventName;
@@ -103,32 +96,22 @@ export class Injector {
             _Array.unique(this.scripts.map(([_, k]) => k)),
             name => [se(name, 'added'), se(name, 'loaded')]));
         // Observe DOM for scripts
-        this.observer = new MutationObserver((mutations) => {
-            for (const m of mutations) {
-                m.addedNodes.forEach(e => {
-                    if (isScriptElement(e)) {
-                        const detail = {script: e};
-                        const events_added: ScriptEventName[] = ['script-added'];
-                        const events_loaded: ScriptEventName[] = ['script-loaded'];
-                        if (e.src !== '') {
-                            const src = new URL(e.src);
-                            for (const [scriptname, eventname] of this.scripts) {
-                                if (_String.endsWith(src.pathname, scriptname)) {
-                                    events_added.push(se(eventname, 'added'));
-                                    events_loaded.push(se(eventname, 'loaded'));
-                                }
-                            }
-                        }
-                        this.dispatch(events_added, detail);
-                        e.addEventListener('load', this.dispatch.bind(this, events_loaded, detail));
+        this.observer = observer;
+        this.observer.on('add', (_, script) => {
+            const detail = {script};
+            const events_added: ScriptEventName[] = ['script-added'];
+            const events_loaded: ScriptEventName[] = ['script-loaded'];
+            if (script.src !== '') {
+                const src = new URL(script.src);
+                for (const [scriptname, eventname] of this.scripts) {
+                    if (_String.endsWith(src.pathname, scriptname)) {
+                        events_added.push(se(eventname, 'added'));
+                        events_loaded.push(se(eventname, 'loaded'));
                     }
-                });
+                }
             }
-        });
-        document.addEventListener("DOMContentLoaded", this.observer.disconnect.bind(this.observer));
-        this.observer.observe(document, {
-            childList: true,
-            subtree: true,
+            this.dispatch(events_added, detail);
+            script.addEventListener('load', this.dispatch.bind(this, events_loaded, detail));
         });
         // Patch PluginManager.setup()
         this.on('script-managers-loaded', detail => {
@@ -188,4 +171,4 @@ export class Injector {
     }
 }
 
-export const inject = new Injector();
+export const inject = new Injector(global());

@@ -1,13 +1,7 @@
-System.register(["./logger.mjs", "$kawariki:es-polyfill"], function (exports_1, context_1) {
+System.register(["./logger.mjs", "$kawariki:es-polyfill", "./scriptobserver.mjs"], function (exports_1, context_1) {
     "use strict";
-    var logger_mjs_1, _kawariki_es_polyfill_1, Injector, inject;
+    var logger_mjs_1, _kawariki_es_polyfill_1, scriptobserver_mjs_1, Injector, inject;
     var __moduleName = context_1 && context_1.id;
-    function isElement(node) {
-        return node.nodeType === node.ELEMENT_NODE;
-    }
-    function isScriptElement(node) {
-        return isElement(node) && node.tagName === "SCRIPT";
-    }
     return {
         setters: [
             function (logger_mjs_1_1) {
@@ -15,14 +9,17 @@ System.register(["./logger.mjs", "$kawariki:es-polyfill"], function (exports_1, 
             },
             function (_kawariki_es_polyfill_1_1) {
                 _kawariki_es_polyfill_1 = _kawariki_es_polyfill_1_1;
+            },
+            function (scriptobserver_mjs_1_1) {
+                scriptobserver_mjs_1 = scriptobserver_mjs_1_1;
             }
         ],
         execute: function () {
             Injector = (function () {
-                function Injector() {
+                function Injector(observer) {
                     var _this = this;
                     this.logger = new logger_mjs_1.Logger("RpgInject", { color: "MediumPurple" });
-                    this.log_event = this.logger.makeLogFn('info', 'Triggered %s: %o');
+                    this.log_event = this.logger.makeLogFn('debug', 'Triggered %s: %o');
                     this.listeners = {};
                     var se = Injector.scriptEventName;
                     this.scripts = Injector.defaultScripts.concat();
@@ -30,34 +27,23 @@ System.register(["./logger.mjs", "$kawariki:es-polyfill"], function (exports_1, 
                         var _ = _a[0], k = _a[1];
                         return k;
                     })), function (name) { return [se(name, 'added'), se(name, 'loaded')]; }));
-                    this.observer = new MutationObserver(function (mutations) {
-                        for (var _i = 0, mutations_1 = mutations; _i < mutations_1.length; _i++) {
-                            var m = mutations_1[_i];
-                            m.addedNodes.forEach(function (e) {
-                                if (isScriptElement(e)) {
-                                    var detail = { script: e };
-                                    var events_added = ['script-added'];
-                                    var events_loaded = ['script-loaded'];
-                                    if (e.src !== '') {
-                                        var src = new URL(e.src);
-                                        for (var _i = 0, _a = _this.scripts; _i < _a.length; _i++) {
-                                            var _b = _a[_i], scriptname = _b[0], eventname = _b[1];
-                                            if (_kawariki_es_polyfill_1.String.endsWith(src.pathname, scriptname)) {
-                                                events_added.push(se(eventname, 'added'));
-                                                events_loaded.push(se(eventname, 'loaded'));
-                                            }
-                                        }
-                                    }
-                                    _this.dispatch(events_added, detail);
-                                    e.addEventListener('load', _this.dispatch.bind(_this, events_loaded, detail));
+                    this.observer = observer;
+                    this.observer.on('add', function (_, script) {
+                        var detail = { script: script };
+                        var events_added = ['script-added'];
+                        var events_loaded = ['script-loaded'];
+                        if (script.src !== '') {
+                            var src = new URL(script.src);
+                            for (var _i = 0, _a = _this.scripts; _i < _a.length; _i++) {
+                                var _b = _a[_i], scriptname = _b[0], eventname = _b[1];
+                                if (_kawariki_es_polyfill_1.String.endsWith(src.pathname, scriptname)) {
+                                    events_added.push(se(eventname, 'added'));
+                                    events_loaded.push(se(eventname, 'loaded'));
                                 }
-                            });
+                            }
                         }
-                    });
-                    document.addEventListener("DOMContentLoaded", this.observer.disconnect.bind(this.observer));
-                    this.observer.observe(document, {
-                        childList: true,
-                        subtree: true,
+                        _this.dispatch(events_added, detail);
+                        script.addEventListener('load', _this.dispatch.bind(_this, events_loaded, detail));
                     });
                     this.on('script-managers-loaded', function (detail) {
                         var self = _this;
@@ -149,7 +135,7 @@ System.register(["./logger.mjs", "$kawariki:es-polyfill"], function (exports_1, 
                 return Injector;
             }());
             exports_1("Injector", Injector);
-            exports_1("inject", inject = new Injector());
+            exports_1("inject", inject = new Injector(scriptobserver_mjs_1.global()));
         }
     };
 });
