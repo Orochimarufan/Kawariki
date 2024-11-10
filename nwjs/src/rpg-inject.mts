@@ -116,23 +116,22 @@ export class Injector {
         // Patch PluginManager.setup()
         this.on('script-managers-loaded', detail => {
             const self = this;
-            const extractFileName = 
-                  Utils.RPGMAKER_NAME === "MV"
-                ? name => name + ".js"
-                : Utils.extractFileName !== undefined
+            const isMV = Utils.RPGMAKER_NAME === "MV";
+            const extractFileName =
+                  Utils.RPGMAKER_NAME === "MZ" && Utils.extractFileName !== undefined
                 ? Utils.extractFileName.bind(Utils)
                 : name => name;
             PluginManager.setup = function(this: typeof PluginManager, plugins) {
                 self.dispatch(['plugins-setup'], {plugins});
                 for (const plugin of plugins) {
                     // XXX: dispatch setup even when not enabled?
-                    if (plugin.status && !_Array.includes(this._scripts, plugin.name)) {
-                        plugin._filename = extractFileName(plugin.name);
+                    const key = plugin._filename = extractFileName(plugin.name);
+                    if (plugin.status && !_Array.includes(this._scripts, key)) {
                         self.dispatch(['plugin-setup'], {plugin});
                         // Actually load plugin
-                        this.setParameters(plugin.name, plugin.parameters);
-                        this.loadScript(plugin._filename);
-                        this._scripts.push(plugin.name);
+                        this.setParameters(key, plugin.parameters);
+                        this.loadScript(isMV ? plugin.name + ".js" : plugin.name);
+                        this._scripts.push(key);
                         // Done
                         self.dispatch(['plugin-loaded'], {plugin});
                     }

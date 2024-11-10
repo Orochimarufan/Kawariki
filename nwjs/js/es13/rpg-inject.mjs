@@ -66,20 +66,19 @@ export class Injector {
         });
         this.on('script-managers-loaded', detail => {
             const self = this;
-            const extractFileName = Utils.RPGMAKER_NAME === "MV"
-                ? name => name + ".js"
-                : Utils.extractFileName !== undefined
-                    ? Utils.extractFileName.bind(Utils)
-                    : name => name;
+            const isMV = Utils.RPGMAKER_NAME === "MV";
+            const extractFileName = Utils.RPGMAKER_NAME === "MZ" && Utils.extractFileName !== undefined
+                ? Utils.extractFileName.bind(Utils)
+                : name => name;
             PluginManager.setup = function (plugins) {
                 self.dispatch(['plugins-setup'], { plugins });
                 for (const plugin of plugins) {
-                    if (plugin.status && !_Array.includes(this._scripts, plugin.name)) {
-                        plugin._filename = extractFileName(plugin.name);
+                    const key = plugin._filename = extractFileName(plugin.name);
+                    if (plugin.status && !_Array.includes(this._scripts, key)) {
                         self.dispatch(['plugin-setup'], { plugin });
-                        this.setParameters(plugin.name, plugin.parameters);
-                        this.loadScript(plugin._filename);
-                        this._scripts.push(plugin.name);
+                        this.setParameters(key, plugin.parameters);
+                        this.loadScript(isMV ? plugin.name + ".js" : plugin.name);
+                        this._scripts.push(key);
                         self.dispatch(['plugin-loaded'], { plugin });
                     }
                 }
