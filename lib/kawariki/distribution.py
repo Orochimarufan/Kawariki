@@ -3,6 +3,7 @@ from json import load as json_load
 from pathlib import Path
 from string import Formatter
 from typing import Any, ClassVar, Generic, Literal, TypedDict, TypeVar, cast, overload
+from warnings import warn
 
 from .misc import version_str
 from .utils.typing import Self
@@ -21,6 +22,7 @@ class DistributionInfo(TypedDict, total=False):
     binary: str                     # Binary name
     alias: Sequence[str]            # Aliases for humans
     strip_leading: str|bool         # Strip leading component from archive filename
+    template: str                   # Template the distribution is extended from
 
 
 class DistributionList(TypedDict, total=False): # Generic[DI], unsupported w/ TypedDict until 3.11
@@ -32,13 +34,30 @@ class DistributionList(TypedDict, total=False): # Generic[DI], unsupported w/ Ty
     versions: Sequence[DistributionInfo]        # Required; Version list
 
 
+class VersionTuple(tuple):
+    def __format__(self, spec: str) -> str:
+        if spec.isdigit():
+            return version_str(self[:int(spec)])
+        return version_str(self)
+
+class StringRe(str):
+    def __format__(self, spec: str) -> str:
+        mode, pattern, *parts = spec.split(spec[1])
+        if mode == 's':
+            import re
+            return re.sub(pattern, parts[0], self)
+        raise ValueError()
+
+
 class DistributionFormatter(Formatter):
     """ String formatter with additional conversions:
         - !v: Format a version tuple by converting elements to str and joining by .
     """
     def convert_field(self, value: Any, conversion: str|None) -> Any:
         if conversion == 'v':
-            return version_str(value)
+            return VersionTuple(value)
+        if conversion == 'e':
+            return StringRe(value)
         return super().convert_field(value, conversion)
 
 
@@ -91,7 +110,7 @@ class Distribution(Generic[DI]):
     host_platform: str
 
     raw: DI
-    common: DI
+    templates: Sequence[DI]
     computed: dict[str, str]
     platform_map: dict[str, str]|None
 
@@ -106,12 +125,13 @@ class Distribution(Generic[DI]):
 
     def __init__(self, info: DI, dist_path: Path, platform=None,
                  platform_map: dict[str, str]|None=None,
-                 common: DI|None=None):
+                 templates: Sequence[DI]=[]):
         self.path = dist_path
         self.platform_map = platform_map
 
+        # Create property chain
+        self.templates = templates
         self.raw = info
-        self.common = common or cast(DI, {})
         self.computed = computed = {
             "dist_name": dist_path.name,
             "dist_path": dist_path,
@@ -120,7 +140,7 @@ class Distribution(Generic[DI]):
 
         # type: ignore
         self.info = infos = PatternInterpolatedChainMap( # type: ignore[assignment] # ChainMap is compatible
-            computed, info, common, self.defaults, # type: ignore[arg-type] # TypedDicts are also dicts
+            computed, info, *templates, self.defaults, # type: ignore[arg-type] # TypedDicts are also dicts
             formatter=self.formatter)
 
         # Compute distribution platform name
@@ -173,11 +193,30 @@ class Distribution(Generic[DI]):
 
     # Loading from JSON
     @classmethod
+    def _build_template_order(cls, data: DI, templates: dict[str,DI]) -> tuple[DI, ...]:
+        # build template hierarchy
+        template_names: list[str] = []
+        while "template" in data:
+            name = data["template"]
+            # Prevent cycles
+            if name in template_names:
+                warn(f"Template cycle: {'->'.join(template_names)}->{name}")
+                break
+            data = templates.get(name) # type: ignore[assignment]
+            if not data:
+                warn(f"Template doesn't exist: {name}")
+                break
+            template_names.append(name)
+        if "" not in template_names and "" in templates:
+            template_names.append("")
+        return tuple(templates[name] for name in template_names)
+
+    @classmethod
     def load_variants(cls, info: DI, dist_path: Path, platform=None,
                       platform_map: dict[str, str]|None=None,
-                      defaults: DI|None=None) -> Iterable[Self]:
+                      templates: dict[str,DI]={}) -> Iterable[Self]:
         """ Allow subclass to synthesize multiple variants from one versions.json entry """
-        return (cls(info, dist_path, platform, platform_map, defaults),)
+        return (cls(info, dist_path, platform, platform_map, cls._build_template_order(info, templates)),)
 
     @classmethod
     def load_data(cls, data: DistributionList, dist_path: Path, platform: str|None = None) -> list[Self]:
@@ -197,11 +236,12 @@ class Distribution(Generic[DI]):
             else:
                 raise ValueError(f"Unsupported value for /platforms: {type(data['platforms'])}. Expected dict or list.")
         dist_platform = platform_map[platform] if platform_map and platform else platform
-        common = data.get("common", {})
+        templates: dict[str, DI]
+        templates = {"": cast(DI, data.get("common", {}))} if data["format"] == 2 else data.get("templates", {})
         return [ver
                 for i in data["versions"]
                 if platform is None or "platforms" not in i or dist_platform in i["platforms"]
-                for ver in cls.load_variants(i, dist_path, platform, platform_map, common)]
+                for ver in cls.load_variants(cast(DI, i), dist_path, platform, platform_map, templates)]
 
     @classmethod
     def load_json(cls, filename: Path, dist_path: Path, platform: str|None = None) -> list[Self]:
@@ -209,7 +249,16 @@ class Distribution(Generic[DI]):
         with open(filename, "r", encoding="utf8") as f:
             data = json_load(f)
             if isinstance(data, dict):
-                if data.get('format', 2) != 2:
+                if data.get('format', 2) not in {2, 3}:
                     raise ValueError(f"Unknown format version in versions.json file: {filename}")
                 return cls.load_data(data, dist_path, platform)  # type: ignore
             raise ValueError(f"Old versions.json format: {filename}")
+
+
+def get_first(key: str, templates: Sequence[dict[str, T]], default: T|None=None) -> T|None:
+    for t in templates:
+        try:
+            return t[key]
+        except KeyError:
+            pass
+    return default

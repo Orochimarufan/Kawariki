@@ -63,6 +63,10 @@
         "info": {
             "type": "object",
             "properties": {
+                "template": {
+                    "description": "Template to extend from. Must be plain string. (v3+)",
+                    "type": "string"
+                },
                 "name": {
                     "description": "Human-readable name of the distribution",
                     "$ref": "#/definitions/interpolated_string"
@@ -121,7 +125,7 @@
         },
         "format": {
             "type": "integer",
-            "description": "Format version number, currently 2"
+            "description": "Format version number, currently 3"
         },
         "name": {
             "description": "Component name",
@@ -136,8 +140,24 @@
             "minProperties": 1
         },
         "common": {
-            "description": "Properties common to all versions",
+            "description": "Properties common to all versions (v2)",
             "$ref": "#/definitions/info"
+        },
+        "templates": {
+            "description": "Template definitions (v3+)",
+            "type": "object",
+            "properties": {
+                "": {
+                    "description": "Default template that is always applied last",
+                    "$ref": "#/definitions/info",
+                    "dependencies": {
+                        "template": false
+                    }
+                }
+            },
+            "additionalProperties": {
+                "$ref": "#/definitions/info"
+            }
         },
         "versions": {
             "description": "The available versions of the component",
@@ -149,5 +169,21 @@
         }
     },
     "required": ["format", "name", "versions"],
-    "additionalProperties": false
+    "additionalProperties": false,
+    "dependencies": {
+        "common": {
+            "properties": {
+                "format": {
+                    "enum": [2]
+                }
+            }
+        },
+        "templates": {
+            "properties": {
+                "format": {
+                    "enum": [3]
+                }
+            }
+        }
+    }
 }

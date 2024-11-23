@@ -108,6 +108,7 @@ class PatternInterpolatedChainMap(InterpolatedChainMap[T]):
         else:
             op = m.group("op")
             ikey = m.group("key")
+        value: T|str
         try:
             value = self[ikey]
         except KeyError:
@@ -118,6 +119,7 @@ class PatternInterpolatedChainMap(InterpolatedChainMap[T]):
             if isinstance(value, bool):
                 res = m.group("pattern").lower() == str(value).lower()
             else:
-                res = fnmatchcase(str(value), m.group("pattern"))
+                value = ",".join(map(str, value)) if isinstance(value, list | tuple) else str(value)
+                res = fnmatchcase(value, m.group("pattern"))
             return res ^ (op == "!=")
         raise RuntimeError("Pattern match error")
