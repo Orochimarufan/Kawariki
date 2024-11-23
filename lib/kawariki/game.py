@@ -139,6 +139,15 @@ class Game:
         pck = exe.with_suffix(".pck")
         if pck.exists():
             return pck
+        if exe.suffix in {'.exe', ".x86_64"}:
+            from .godot.pack import PackReader
+            try:
+                with open(exe, 'rb') as f:
+                    PackReader.find_offset(f)
+            except ValueError:
+                pass
+            else:
+                return exe
         return None
 
     @property
