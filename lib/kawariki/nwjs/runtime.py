@@ -10,7 +10,7 @@ from tempfile import NamedTemporaryFile
 from typing import IO, ClassVar, Literal, TypedDict
 
 from ..app import App, IRuntime
-from ..distribution import Distribution, DistributionInfo, DistributionInfoProperty, DistributionInfoPropertyOptional
+from ..distribution import Distribution, DistributionInfo, DistributionInfoProperty, DistributionInfoPropertyOptional, get_first
 from ..game import Game
 from ..misc import ErrorCode, copy_unlink, version_str
 from ..process import ProcessLaunchInfo
@@ -23,8 +23,11 @@ class NWjsDistributionInfo(DistributionInfo):
     sdk: bool
 
 
-class GreenworksDistInfo(DistributionInfo):
+class GreenworksDistInfo(DistributionInfo, TypedDict('_GreenworksDistInfo', {
+        'steamworks-url': str,      # Steamworks download URL
+    }), total=False):
     nwjs: Sequence[Sequence[int]]   # Required
+    steamworks: Sequence[int]       # Steamworks version
 
 
 class NWjs(Distribution):
@@ -39,10 +42,11 @@ class NWjs(Distribution):
     @classmethod
     def load_variants(cls, info: NWjsDistributionInfo, dist_path: Path, platform=None,
                       platform_map: dict[str, str]|None=None,
-                      defaults: NWjsDistributionInfo|None=None):
+                      templates: dict[str, NWjsDistributionInfo]={}):
         """ Synthesize sdk and non-sdk variants if sdk=synthesize """
+        template_seq = cls._build_template_order(info, templates)
         infos: Sequence[NWjsDistributionInfo]
-        if info.get('sdk', defaults.get('sdk', None) if defaults else None) == "synthesize":
+        if info.get('sdk', get_first('sdk', template_seq, None)) == "synthesize":
             alias: Sequence[str] = info.get('alias', [])
             # TypedDict.update seems to have some typing issues
             info_sdk = info.copy()
@@ -52,7 +56,7 @@ class NWjs(Distribution):
             infos = (info_nosdk, info_sdk)
         else:
             infos = (info,)
-        return (cls(info, dist_path, platform, platform_map, defaults) for info in infos)
+        return (cls(info, dist_path, platform, platform_map, template_seq) for info in infos)
 
 
 class GreenworksDistribution(Distribution):
@@ -795,6 +799,10 @@ class Runtime(IRuntime):
 
         # Don't disable DevTools
         conf['chromium-args'] = conf.get('chromium-args', "").replace("--disable-devtools", "")
+        # Default to Wayland on NW.js >= 0.75 (arbitrarily chosen)
+        if os.environ.get('WAYLAND_DISPLAY') and nwjs.version >= (0, 75):
+            conf['chromium-args'] = "--ozone-platform=wayland " + conf.get('chromium-args', "")
+
         with overlay_or_clobber(pkg, proc, pkg.json) as f:
             json.dump(conf, f)
 
@@ -824,8 +832,10 @@ class Runtime(IRuntime):
                 print("Unpacking app to: ", tmp)
                 pkg = pkg.unarchive(tmp, as_temp=True)
 
+        nwjs_args = shlex_split(os.environ.get('KAWARIKI_NWJS_ARGS', ''))
+
         path = pkg.path.relative_to(game.root) if pkg.path.is_relative_to(game.root) else pkg.path.resolve()
-        proc.argv.extend([path, *arguments])
+        proc.argv.extend([*nwjs_args, path, *arguments])
         proc.workingdir = game.root
 
         # === Patch some game files ===
