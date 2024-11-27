@@ -687,25 +687,20 @@ class Runtime(IRuntime):
             # Steam libraries are very likely to be on such a filesystem though.
             #overlayns.append("-o")
             #overlayns.append("{},shadow,lowerdir={},nodev,nosuid".format(ppath,r.nwjs_greenworks_path))
-            # Instead, fall back to copies and bind mounts
-            tempdir = proc.temp_dir(prefix=str(ppath.relative_to(pkg.path)).replace("/", "_"))
-            if ',' in str(ppath) or ',' in str(tempdir):
-                self.app.show_error("Comma in paths is currently not supported by overlayns\n"
-                                    "Greenworks support disabled")
-                continue
-            copytree(ppath, tempdir, dirs_exist_ok=True)
-            copytree(greenworks.path, tempdir, dirs_exist_ok=True, copy_function=copy_unlink)
-            proc.overlayns_bind(tempdir, ppath)
+            # Instead, fall back to individual bind mounts
+            for parent_, _, files in os.walk(greenworks.path):
+                parent = Path(parent_)
+                pparent = ppath / parent.relative_to(greenworks.path)
+                for fn in files:
+                    proc.replace_file_from(pparent / fn, parent / fn)
 
     def overlay_files(self, game: Game, pkg: PackageNw, nwjs: NWjs, proc: ProcessLaunchInfo):
         if pkg.is_archive:
             raise RuntimeError("Cannot modify archived package directly")
 
         # Patch native greenworks (Steamworks API)
-        if proc.have_overlayns:
+        if not os.environ.get("KAWARIKI_NWJS_NO_GREENWORKS"):
             self.overlay_greenworks(pkg, nwjs, proc)
-        else:
-            print("Warning: overlayns not supported or explicitly disabled. Greenworks integration disabled.")
 
         # TODO: make all this configurable
         conf = pkg.read_json()

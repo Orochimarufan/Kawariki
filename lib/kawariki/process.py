@@ -56,6 +56,15 @@ class ProcessEnvironment:
         self._overlayns.append("-m")
         self._overlayns.append(f"bind,{src},{mp}")
 
+    def makedirs_with_cleanup(self, path: Path):
+        create_parents = []
+        while not path.exists():
+            create_parents.append(path)
+            path = path.parent
+        for path in reversed(create_parents):
+            path.mkdir()
+            self.at_cleanup(path.rmdir)
+
     @contextmanager
     def replace_file(self, path: Path, mode: Literal["w", "a"]="w") -> Iterator[IO[str]]:
         """ Replace the content of a file for the process while keeping the original version.
@@ -80,9 +89,27 @@ class ProcessEnvironment:
             if mode == "a":
                 copy(backup, path)
         else:
+            self.makedirs_with_cleanup(path.parent)
             self.at_cleanup(path.unlink)
         with path.open(mode) as f:
             yield f
+
+    def replace_file_from(self, path: Path, source: Path):
+        """ Overlay or temporarily replace file with other file. See also replace_file() """
+        if path.exists():
+            if self.have_overlayns:
+                self.overlayns_bind(source, path)
+                return
+            backup = path.parent / f"{path.stem}.kawariki-backup{path.suffix}"
+            if backup.exists():
+                raise FileExistsError(backup)
+            print(f"Overwriting {path.name} (Preserved as {backup.name}, will restore after session)")
+            path.rename(backup)
+            self.at_cleanup(lambda: backup.rename(path))
+        else:
+            self.makedirs_with_cleanup(path.parent)
+            self.at_cleanup(path.unlink)
+        path.symlink_to(source)
 
     def add_overlays_from_file(self, path: Path):
         """ Add overlay mounts from file. Every line is a -m option """
