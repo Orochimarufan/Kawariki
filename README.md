@@ -65,7 +65,7 @@ RPGMaker editions based on RGSS are:
 
 ### Ren'Py
 
-Kawariki kan run [Ren'Py][renpy] games using the Ren'Py SDK.
+Kawariki can run [Ren'Py][renpy] games using the Ren'Py SDK.
 
 [README][rt-renpy]
 
