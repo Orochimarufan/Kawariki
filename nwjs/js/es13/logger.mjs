@@ -2,10 +2,26 @@ export class Logger {
     name;
     color;
     console;
+    static DEFAULT_COLORS = [
+        "maroon", "purple", "fuchsia", "green", "lime", "olive", "navy", "blue", "teal", "aqua",
+        "aquamarine", "bisque", "blueviolet", "brown", "cadetblue", "chocolate", "coral", "cornflowerblue", "crimson",
+        "darkblue", "darkcyan", "darkgoldenrod", "darkgrey", "darkgreen", "darkkhaki", "darkmagenta", "darkolivegreen", "darkorchid",
+        "darkred", "darksalmon", "darkseagreen", "darkslateblue", "darkslategrey", "darkviolet", "deeppink", "deepskyblue",
+        "dodgerblue", "firebrick", "forestgreen", "fuchsia", "hotpink", "indianred", "indigo", "limegreen",
+        "mediumaquamarine", "mediumblue", "mediumorchid", "mediumpurple", "mediumseagreen", "mediumslateblue", "mediumspringgreen",
+        "mediumturquoise", "mediumvioletred", "midnightblue", "olive", "orange", "orangered", "orchid", "plum", "rebeccapurple",
+        "royalblue", "saddlebrown", "seagreen", "sienna", "slateblue", "steelblue", "tomato"
+    ];
     constructor(name, options) {
         this.name = name;
-        this.color = options?.color ?? 'SeaGreen';
+        this.color = options?.color ?? Logger.DEFAULT_COLORS[(this.idhash & 0xFFFF) % Logger.DEFAULT_COLORS.length];
         this.console = options?.console ?? window.console;
+    }
+    get idhash() {
+        const s = this.name;
+        for (var i = 0, h = 9; i < s.length;)
+            h = Math.imul(h ^ s.charCodeAt(i++), 9 ** 9);
+        return h ^ h >>> 9;
     }
     get prefix_fmt() {
         return '%c%s%c';

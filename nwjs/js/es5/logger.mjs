@@ -9,9 +9,19 @@ System.register([], function (exports_1, context_1) {
                 function Logger(name, options) {
                     var _a, _b;
                     this.name = name;
-                    this.color = (_a = options === null || options === void 0 ? void 0 : options.color) !== null && _a !== void 0 ? _a : 'SeaGreen';
+                    this.color = (_a = options === null || options === void 0 ? void 0 : options.color) !== null && _a !== void 0 ? _a : Logger.DEFAULT_COLORS[(this.idhash & 0xFFFF) % Logger.DEFAULT_COLORS.length];
                     this.console = (_b = options === null || options === void 0 ? void 0 : options.console) !== null && _b !== void 0 ? _b : window.console;
                 }
+                Object.defineProperty(Logger.prototype, "idhash", {
+                    get: function () {
+                        var s = this.name;
+                        for (var i = 0, h = 9; i < s.length;)
+                            h = Math.imul(h ^ s.charCodeAt(i++), Math.pow(9, 9));
+                        return h ^ h >>> 9;
+                    },
+                    enumerable: false,
+                    configurable: true
+                });
                 Object.defineProperty(Logger.prototype, "prefix_fmt", {
                     get: function () {
                         return '%c%s%c';
@@ -86,6 +96,16 @@ System.register([], function (exports_1, context_1) {
                     enumerable: false,
                     configurable: true
                 });
+                Logger.DEFAULT_COLORS = [
+                    "maroon", "purple", "fuchsia", "green", "lime", "olive", "navy", "blue", "teal", "aqua",
+                    "aquamarine", "bisque", "blueviolet", "brown", "cadetblue", "chocolate", "coral", "cornflowerblue", "crimson",
+                    "darkblue", "darkcyan", "darkgoldenrod", "darkgrey", "darkgreen", "darkkhaki", "darkmagenta", "darkolivegreen", "darkorchid",
+                    "darkred", "darksalmon", "darkseagreen", "darkslateblue", "darkslategrey", "darkviolet", "deeppink", "deepskyblue",
+                    "dodgerblue", "firebrick", "forestgreen", "fuchsia", "hotpink", "indianred", "indigo", "limegreen",
+                    "mediumaquamarine", "mediumblue", "mediumorchid", "mediumpurple", "mediumseagreen", "mediumslateblue", "mediumspringgreen",
+                    "mediumturquoise", "mediumvioletred", "midnightblue", "olive", "orange", "orangered", "orchid", "plum", "rebeccapurple",
+                    "royalblue", "saddlebrown", "seagreen", "sienna", "slateblue", "steelblue", "tomato"
+                ];
                 return Logger;
             }());
             exports_1("Logger", Logger);
