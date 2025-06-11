@@ -1,6 +1,6 @@
 {
     "$schema": "../versions.schema.json",
-    "format": 2,
+    "format": 3,
     "name": "nwjs-greenworks",
     "platforms": {
         "linux-x86_64": "linux-x64",
@@ -8,64 +8,107 @@
         "linux-i386": "linux-ia32",
         "darwin-x86_64": "osx"
     },
-    "common": {
-        "name": "Greenworks {version!v} for NW.js {nwjs[0]!v} ({platform})",
-        "slug": "greenworks-{version!v}-nwjs-{nwjs[0]!v}-{platform}",
-        "platforms": ["linux-x64"],
-        "steamworks-platform": {
-            "platform=linux-x64": "linux64",
-            "platform=linux-ia32": "linux32",
-            "platform=osx": "osx"
+    "templates": {
+        "": {
+            "name": "Greenworks {version!v} for {nwjs-desc} ({platform})",
+            "slug": "greenworks-{version!v}-nwjs-{nwjs[0]!v}-{platform}",
+            "steamworks-platform": {
+                "platform=linux-x64": "linux64",
+                "platform=linux-ia32": "linux32",
+                "platform=osx": "osx"
+            },
+            "nwjs": {
+                "node-abi=137": [[0, 100, 1]],
+                "node-abi=131": [[0, 94, 1], [0, 95], [0, 96], [0, 97], [0, 98], [0, 99], [0, 100, 0]],
+                "node-abi=127": [[0, 88], [0, 89], [0, 90], [0, 91], [0, 92], [0, 93], [0, 94, 0]],
+                "node-abi=120": [[0, 83], [0, 84], [0, 85], [0, 86], [0, 87]],
+                "node-abi=115": [[0, 76, 1], [0, 77], [0, 78], [0, 79], [0, 80], [0, 81], [0, 82]],
+                "node-abi=111": [[0, 70, 1], [0, 71], [0, 72], [0, 73], [0, 74], [0, 75], [0, 76, 0]],
+                "node-abi=108": [[0, 64, 1], [0, 65], [0, 66], [0, 67], [0, 68], [0, 69], [0, 70, 0]],
+                "": "{REQUIRED: Must specify either of `node-abi` or `nwjs` versions}"
+            },
+            "nwjs-desc": {
+                "node-abi=137": "NW.js 0.100.1 (ABI 137)",
+                "node-abi=131": "NW.js 0.94.1 - 0.100.0 (ABI 131)",
+                "node-abi=127": "NW.js 0.88.0 - 0.94.0 (ABI 127)",
+                "node-abi=120": "NW.js 0.83.0 - 0.87.0 (ABI 120)",
+                "node-abi=115": "NW.js 0.76.1 - 0.82.0 (ABI 115)",
+                "node-abi=111": "NW.js 0.70.1 - 0.76.0 (ABI 111)",
+                "node-abi=108": "NW.js 0.64.1 - 0.70.0 (ABI 108)",
+                "": "NW.js {nwjs[0]!v}"
+            },
+            "nwjs-tag": "{REQUIRED:Specify target NW.js tag for download}"
+        },
+        "kk": {
+            "platforms": ["linux-x64"],
+            "url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/greenworks-nwjs-{nwjs-tag}-linux-x64.tar.xz",
+            "_": "Already includes Steamworks redist"
+        },
+        "ghg": {
+            "platforms": ["linux-x64", "linux-ia32", "osx"],
+            "urlplatform": {
+                "platform=linux-x64": "linux-64",
+                "platform=linux-ia32": "linux-32",
+                "platform=osx": "osx"
+            },
+            "url": "https://github.com/greenheartgames/greenworks/releases/download/v{version!v}/greenworks-v{version!v}-nw-v{nwjs-tag}-{urlplatform}.zip",
+            "strip_leading": false,
+            "steamworks-url": "https://partner.steamgames.com/downloads/steamworks_sdk_{steamworks!j}.zip",
+            "steamworks": "{REQUIRED:Specify required Steamworks SDK version e.g. [1,60]}"
         }
     },
     "versions": [
         {
-            "nwjs": [[0, 88], [0, 89], [0, 90], [0, 91], [0, 92], [0, 93]],
+            "template": "ghg",
+            "version": [0, 20, 0],
+            "nwjs-tag": "0.98.0",
+            "node-abi": 131,
+            "steamworks": [1, 62]
+        },
+        {
+            "template": "ghg",
+            "version": [0, 19, 0],
+            "nwjs-tag": "0.94.0",
+            "node-abi": 127,
+            "steamworks": [1, 61]
+        },
+        {
+            "template": "ghg",
             "version": [0, 18, 0],
-            "platforms": ["linux-x64", "linux-ia32", "osx"],
-            "urlplatform": {
-                "platform=linux-x64": "linux-64",
-                "platform=linux-ia32": "linux-32",
-                "platform=osx": "osx"
-            },
-            "url": "https://github.com/greenheartgames/greenworks/releases/download/v{version!v}/greenworks-v{version!v}-nw-v0.92.0-{urlplatform}.zip",
-            "strip_leading": false,
-            "steamworks": [1, 60],
-            "steamworks-url": "https://partner.steamgames.com/downloads/steamworks_sdk_160.zip"
+            "nwjs-tag": "0.92.0",
+            "node-abi": 127,
+            "steamworks": [1, 60]
         },
         {
-            "nwjs": [[0, 83], [0, 84], [0, 85], [0, 86], [0, 87]],
+            "template": "ghg",
             "version": [0, 16, 0],
-            "platforms": ["linux-x64", "linux-ia32", "osx"],
-            "urlplatform": {
-                "platform=linux-x64": "linux-64",
-                "platform=linux-ia32": "linux-32",
-                "platform=osx": "osx"
-            },
-            "url": "https://github.com/greenheartgames/greenworks/releases/download/v0.16.0/greenworks-v0.16.0-nw-v0.86.0-{urlplatform}.zip",
-            "strip_leading": false,
-            "steamworks": [1, 59],
-            "steamworks-url": "https://partner.steamgames.com/downloads/steamworks_sdk_159.zip"
+            "nwjs-tag": "0.86.0",
+            "node-abi": 120,
+            "steamworks": [1, 59]
         },
         {
-            "nwjs": [[0, 70, 1], [0, 71], [0, 72], [0, 73], [0, 74], [0, 75]],
+            "template": "kk",
             "version": [1, 5, 0],
-            "url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/greenworks-nwjs-0.70.1-linux-x64.tar.xz"
+            "nwjs-tag": "0.70.1",
+            "node-abi": 111
         },
         {
-            "nwjs": [[0, 66]],
+            "template": "kk",
             "version": [1, 5, 0],
-            "url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/greenworks-nwjs-0.66.x-linux-x64.tar.xz"
+            "nwjs-tag": "0.66.x",
+            "node-abi": 108
         },
         {
-            "nwjs": [[0, 58]],
+            "template": "kk",
             "version": [1, 5, 0],
-            "url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/greenworks-nwjs-0.58.x-linux-x64.tar.xz"
+            "nwjs-tag": "0.58.x",
+            "nwjs": [[0, 58]]
         },
         {
-            "nwjs": [[0, 54]],
+            "template": "kk",
             "version": [1, 5, 0],
-            "url": "https://github.com/Orochimarufan/Kawariki/releases/download/mkxp-2.3.0-kk/greenworks-nwjs-0.54.x-linux-x64.tar.xz"
+            "nwjs-tag": "0.54.x",
+            "nwjs": [[0, 54]]
         }
     ]
 }
