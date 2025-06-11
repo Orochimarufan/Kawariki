@@ -291,8 +291,9 @@ class InjectFileBuilder:
     def write_inner(self, file: IO[str], contexts: Sequence[Context], *,
                     embedded_module: bool=False, ilevel: str="    "):
         if "inject" in contexts or embedded_module:
+            # XXX: do script_parent differently. head may not be available when injected old-style
             file.write(dedent(f"""\
-                    var script_parent = document.{'body' if embedded_module else 'head'};
+                    var script_parent = document.{'body' if embedded_module else 'head || document.documentElement'};
                     function appendScript(attrs, onload, onerror) {{
                         var el = document.createElement("script");
                         el.async = false;
@@ -336,6 +337,7 @@ class InjectFileBuilder:
                     f'appendScript({{type: "text/javascript", src: "file://{self.es_path / "s.js"}"}}, function () {{',
                     "    System.addImportMap(importmap);",
                     "    // Injected scripts",
+                    "    var promises = [];",
                     *(indent(i, '    ') for i in injectors),
                     "});"
                 )
@@ -678,6 +680,7 @@ class Runtime(IRuntime):
             if not greenworks:
                 break
             print(f"Patching Greenworks at '{path}'")
+            print(f"\t Using {greenworks.name}")
             ppath = path.parent
             # Just clobber files if we extracted package to temp
             if pkg.may_clobber:
@@ -715,8 +718,10 @@ class Runtime(IRuntime):
             inject.require(js / 'case-insensitive-nw.js', ('inject',))
         else:
             inject.require(js / 'case-insensitive-nw.js', ('preload',))
+        inject.module("scriptobserver.mjs")
 
         if game.rpgmaker_release in ("MV", "MZ"):
+            inject.module("rpg-inject.mjs")
             # Disable this if we can detect a rmmv  plugin that provides remapping?
             inject.module("rpg-remap.mjs")
             inject.module("rpg-fixes.mjs")
@@ -779,7 +784,11 @@ class Runtime(IRuntime):
                 inject_contexts = "preload", *inject_contexts
             if nwjs.version >= (0, 70) and conf.get("main"):
                 # Need to patch main.html to ensure loading order
-                add_pkg_script("main", inject_contexts, patch_html=True)
+                if not os.environ.get("KAWARIKI_NWJS_OVERLAY_HTML"):
+                    add_pkg_script("main", inject_contexts, patch_html=True)
+                else:
+                    with open(conf["main"], 'r') as fin, overlay_or_clobber(pkg, proc, conf["main"]) as fout:
+                        inject.write_html(fin, fout, inject_contexts)
             else:
                 add_pkg_script("inject_js_start", inject_contexts)
         else:
@@ -834,7 +843,8 @@ class Runtime(IRuntime):
         proc.workingdir = game.root
 
         # === Patch some game files ===
-        self.overlay_files(game, pkg, nwjs, proc)
+        if not os.environ.get("KAWARIKI_NWJS_RUN_UNMODIFIED"):
+            self.overlay_files(game, pkg, nwjs, proc)
 
         # Custom overlays
         ons = pkg.enclosing_directory / "kawariki.overlayns"
