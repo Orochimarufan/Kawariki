@@ -3,28 +3,51 @@
     "format": 3,
     "name": "godot",
     "platforms": {
-        "linux-x86_64": "linux-x86_64",
-        "linux-i686": "linux-x86_32",
-        "linux-aarch64": "linux-arm64"
+        "linux-x86_64": "linux.x86_64",
+        "linux-i686": "linux.x86_32",
+        "linux-aarch64": "linux.arm64",
+        "linux-armhf": "linux.arm32",
+        "osx-x86_64": "macos.universal",
+        "osx-arm64": "macos.universal"
     },
     "templates": {
         "": {
-            "strip_leading": false
-        },
-        "v4": {
             "version_name": {
                 "version=*,0": "{version!v:2}-stable",
                 "": "{version!v}-stable"
             },
-            "platforms": ["linux-x86_64", "linux-x86_32", "linux-arm64", "macos-universal"],
-            "os_name": "{platform!e:s/-.+$//}",
-            "os_arch": "{platform!e:s/^.+-//}",
-            "dl_platform": "{os_name}.{os_arch}",
+            "name": "Godot {version_name} ({platform})",
+            "binary": "Godot_v{version_name}_{dl_platform}",
             "url": "https://github.com/godotengine/godot/releases/download/{version_name}/Godot_v{version_name}_{dl_platform}.zip",
-            "binary": "Godot_v{version_name}_{dl_platform}"
+            "strip_leading": false
+        },
+        "v4": {
+            "platforms": ["linux.x86_64", "linux.x86_32", "linux.arm64", "linux.arm32", "macos.universal"],
+            "dl_platform": "{platform}"
+        },
+        "v3": {
+            "platforms": ["linux.x86_64", "linux.x86_32", "macos.universal"],
+            "dl_platform": {
+                "platform=linux.x86_64": "x11.64",
+                "platform=linux.x86_32": "x11.32",
+                "platform=macos.universal": "osx.universal"
+            }
+        },
+        "v2": {
+            "platforms": ["linux.x86_64", "linux.x86_32", "macos.universal"],
+            "dl_platform": {
+                "platform=linux.x86_64": "x11.64",
+                "platform=linux.x86_32": "x11.32",
+                "platform=macos.universal": "osx.fat"
+            }
         }
     },
     "versions": [
+        {
+            "version": [4, 4, 1],
+            "alias": ["4", "4.4"],
+            "template": "v4"
+        },
         {
             "version": [4, 3, 0],
             "alias": ["4", "4.3"],
@@ -36,10 +59,29 @@
             "template": "v4"
         },
         {
-            "version": [3, 5, 2],
-            "platforms": ["linux-x86_64"],
-            "url": "https://github.com/godotengine/godot/releases/download/3.5.2-stable/Godot_v3.5.2-stable_x11.64.zip",
-            "binary": "Godot_v3.5.2-stable_x11.64"
+            "version": [3, 6, 0],
+            "alias": ["3", "3.6"],
+            "template": "v3"
+        },
+        {
+            "version": [3, 5, 3],
+            "alias": ["3.5"],
+            "template": "v3"
+        },
+        {
+            "version": [3, 4, 5],
+            "alias": ["3.4"],
+            "template": "v3"
+        },
+        {
+            "version": [3, 3, 4],
+            "alias": ["3.3"],
+            "template": "v3"
+        },
+        {
+            "version": [2, 1, 6],
+            "alias": ["2", "2.1"],
+            "template": "v2"
         }
     ]
 }
