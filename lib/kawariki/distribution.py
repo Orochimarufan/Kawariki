@@ -40,6 +40,18 @@ class VersionTuple(tuple):
             return version_str(self[:int(spec)])
         return version_str(self)
 
+class JoinTuple(tuple):
+    def __format__(self, spec: str) -> str:
+        value: tuple = self
+        if spec and spec[0].isdigit():
+            i = 1
+            while spec[i].isdigit():
+                i += 1
+            limit = int(spec[:i])
+            value = value[:limit]
+            spec = spec[i:]
+        return spec.join(map(str, value))
+
 class StringRe(str):
     def __format__(self, spec: str) -> str:
         mode, pattern, *parts = spec.split(spec[1])
@@ -47,6 +59,10 @@ class StringRe(str):
             import re
             return re.sub(pattern, parts[0], self)
         raise ValueError()
+
+class RequiredTag:
+    def __format__(self, spec: str):
+        raise ValueError(spec)
 
 
 class DistributionFormatter(Formatter):
@@ -56,6 +72,8 @@ class DistributionFormatter(Formatter):
     def convert_field(self, value: Any, conversion: str|None) -> Any:
         if conversion == 'v':
             return VersionTuple(value)
+        if conversion == 'j':
+            return JoinTuple(value)
         if conversion == 'e':
             return StringRe(value)
         return super().convert_field(value, conversion)
@@ -133,6 +151,7 @@ class Distribution(Generic[DI]):
         self.templates = templates
         self.raw = info
         self.computed = computed = {
+            "REQUIRED": RequiredTag(),
             "dist_name": dist_path.name,
             "dist_path": dist_path,
             "platform_host": platform,
